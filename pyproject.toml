@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pact-protocol"
+version = "0.2.0"
+description = "Pact Protocol — bounded authority coordination infrastructure"
+requires-python = ">=3.11"
+dependencies = ["cryptography>=41.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+server = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "websockets>=12.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
