@@ -1,10 +1,10 @@
 # Vincul Protocol
 
-**Bounded authority coordination infrastructure.**
+**Bounded collective authority as infrastructure.**
 
-Vincul is a protocol for multi-party coordination with explicit boundaries, cryptographic receipts, and fail-closed enforcement. It lets principals (people, agents, services) coordinate actions under shared constraints — where every decision is scoped, every action is auditable, and every receipt is verifiable.
+Vincul is a multi-principal coordination protocol with explicit boundaries, cryptographic receipts, and fail-closed enforcement. It enables people, agents, and services to act together under shared constraints — where every decision is scoped, every action is auditable, and every receipt is verifiable.
 
-> *Human coordination fails not because people are untrustworthy, but because the tools for establishing shared boundaries have been too expensive, too slow, or too opaque.* — [PHILOSOPHY.md](vincul-spec/PHILOSOPHY.md)
+> *Coordination fails not because people are untrustworthy, but because the tools for establishing shared boundaries have been too expensive, too slow, or too opaque.* — [PHILOSOPHY.md](vincul-spec/PHILOSOPHY.md)
 
 ---
 
