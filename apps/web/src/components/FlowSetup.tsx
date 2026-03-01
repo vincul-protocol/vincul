@@ -21,7 +21,7 @@ export default function FlowSetup({ disabled, onComplete }: Props) {
     <FlowRunner
       number={1}
       title="Form Coalition Contract"
-      description="Register and activate the 8-friends trip contract with 3 delegated scopes"
+      description="Register and activate the Group Trip to Italy contract with 3 delegated scopes"
       assertion="Bounded Delegation"
       disabled={disabled}
       onRun={run}

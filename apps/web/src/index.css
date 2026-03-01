@@ -9,3 +9,31 @@
   background: #4b5563;
   border-radius: 3px;
 }
+
+/* Agent message flow animations */
+@keyframes arc-draw {
+  from {
+    stroke-dashoffset: var(--path-length, 1000);
+    opacity: 0.8;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-pulse-red {
+  animation: pulse-red 0.6s ease-out;
+}

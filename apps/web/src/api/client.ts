@@ -1,6 +1,7 @@
 import type {
   ActionRequest,
   ActionResult,
+  DemoFullState,
   DemoStatus,
   DissolveResult,
   OpenVoteRequest,
@@ -55,4 +56,7 @@ export const api = {
 
   getStatus: () =>
     request<DemoStatus>('GET', '/demo/status'),
+
+  getState: () =>
+    request<DemoFullState>('GET', '/demo/state'),
 };

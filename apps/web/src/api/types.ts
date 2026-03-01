@@ -93,6 +93,59 @@ export interface OpenVoteRequest {
   requested_ceiling: string;
 }
 
+// ── Enriched state types (from GET /demo/state) ─────────────
+
+export interface DemoFullState {
+  contract: {
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    hash: string | null;
+    version: string;
+    expires_at: string | null;
+  } | null;
+  principals: PrincipalInfo[];
+  governance: GovernanceInfo;
+  budget_policy: BudgetPolicyInfo;
+  scopes: EnrichedScope[];
+  receipt_count: number;
+}
+
+export interface PrincipalInfo {
+  principal_id: string;
+  role: string;
+}
+
+export interface GovernanceInfo {
+  decision_rule: string;
+  threshold: number;
+  amendment_rule: string;
+  amendment_threshold: number;
+}
+
+export interface BudgetPolicyInfo {
+  allowed: boolean;
+  dimensions: Array<{
+    name: string;
+    unit: string;
+    ceiling: string;
+  }>;
+}
+
+export interface EnrichedScope {
+  id: string;
+  principal_id: string | null;
+  namespace: string;
+  types: string[];
+  predicate: string;
+  ceiling: string;
+  delegate: boolean;
+  status: string;
+  issued_by: string;
+  issued_by_scope_id: string | null;
+}
+
 // ── WebSocket events ─────────────────────────────────────────
 
 export type WsEvent =
@@ -110,6 +163,7 @@ export type WsEvent =
       outcome: string;
       summary: string;
       detail: Record<string, unknown>;
+      scope_id?: string | null;
     }
   | {
       event_type: 'vote_opened';

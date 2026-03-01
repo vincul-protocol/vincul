@@ -21,3 +21,9 @@ async def reset_demo():
 async def demo_status():
     """Return current demo state summary."""
     return demo_state.status_summary()
+
+
+@router.get("/state")
+async def demo_state_full():
+    """Return enriched demo state for the frontend."""
+    return demo_state.enriched_state()

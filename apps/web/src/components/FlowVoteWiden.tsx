@@ -48,7 +48,7 @@ export default function FlowVoteWiden({ disabled, onComplete }: Props) {
         action: {
           type: 'COMMIT',
           namespace: 'travel.accommodation',
-          resource: 'hotel:hilton-tlv',
+          resource: 'hotel:rome-center',
           params: { cost: 450 },
         },
         budget_amounts: { EUR: '450.00' },
@@ -63,7 +63,7 @@ export default function FlowVoteWiden({ disabled, onComplete }: Props) {
   return (
     <FlowRunner
       number={4}
-      title="Vote to Widen Scope + Rebook"
+      title="Agents Vote to Widen Scope + Rebook"
       description="Governance vote (5/8 threshold) grants Yaki COMMIT, then rebook succeeds"
       assertion="Bounded Delegation"
       disabled={disabled}

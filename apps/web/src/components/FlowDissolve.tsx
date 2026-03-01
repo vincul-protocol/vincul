@@ -29,7 +29,7 @@ export default function FlowDissolve({ disabled, onComplete }: Props) {
         action: {
           type: 'COMMIT',
           namespace: 'travel.flights',
-          resource: 'flight:LHR-TLV-20250602',
+          resource: 'flight:LHR-FCO-20250602',
           params: { cost: 300 },
         },
         budget_amounts: { EUR: '300.00' },

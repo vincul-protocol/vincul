@@ -14,9 +14,14 @@ export default function ReceiptTimeline({ events }: { events: WsEvent[] }) {
         <p className="text-sm text-gray-500">No events yet. Run a flow to start.</p>
       ) : (
         <div className="space-y-2 overflow-y-auto timeline-scroll">
-          {events.map((event, i) => (
-            <ReceiptCard key={i} event={event} />
-          ))}
+          {events.map((event, i) => {
+            const key = event.event_type === 'receipt'
+              ? event.receipt_hash
+              : event.event_type === 'vote_cast'
+                ? `vote-${event.vote_id}-${event.principal}`
+                : `${event.event_type}-${i}`;
+            return <ReceiptCard key={key} event={event} />;
+          })}
         </div>
       )}
     </div>

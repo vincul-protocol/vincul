@@ -20,7 +20,7 @@ export default function Header({ status, onReset }: Props) {
         <h1 className="text-xl font-bold text-white tracking-tight">
           Pact Protocol Demo
         </h1>
-        <span className="text-sm text-gray-400">8-Friends Trip</span>
+        <span className="text-sm text-gray-400">8-Friends Trip to Italy</span>
       </div>
 
       <div className="flex items-center gap-4">

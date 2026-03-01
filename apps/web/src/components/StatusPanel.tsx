@@ -6,7 +6,7 @@ export default function StatusPanel({ status }: { status: DemoStatus | null }) {
     return (
       <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          Status
+          Live Status
         </h2>
         <p className="text-sm text-gray-500">Loading...</p>
       </div>
@@ -16,23 +16,8 @@ export default function StatusPanel({ status }: { status: DemoStatus | null }) {
   return (
     <div className="bg-gray-900 rounded-lg border border-gray-800 p-4 space-y-4">
       <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-        Status
+        Live Status
       </h2>
-
-      {/* Contract */}
-      <div>
-        <h3 className="text-xs text-gray-500 mb-1">Contract</h3>
-        <div className="text-sm">
-          <span className="text-gray-300">
-            {status.contract.status ?? 'not created'}
-          </span>
-          {status.contract.hash && (
-            <span className="text-gray-600 font-mono text-xs ml-2">
-              {status.contract.hash.slice(0, 12)}...
-            </span>
-          )}
-        </div>
-      </div>
 
       {/* Scopes */}
       {status.scopes.length > 0 && (

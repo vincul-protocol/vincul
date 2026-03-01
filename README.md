@@ -141,10 +141,10 @@ The demo proves four assertions through an **8-friends-trip** scenario:
 | # | Flow | What happens | Assertion proved |
 |---|---|---|---|
 | 1 | **Contract Setup** | 8 principals form a coalition with 3 scoped delegations | Delegation is bounded |
-| 2 | **Raanan Books Flight** | COMMIT on `travel.flights` with valid scope → success | Receipts are verifiable |
-| 3 | **Yaki Denied** | COMMIT on OBSERVE+PROPOSE scope → `TYPE_ESCALATION` | Scope enforcement works |
-| 4 | **Vote to Widen** | 5/8 governance vote grants COMMIT → Yaki rebooks | Bounded delegation via governance |
-| 5 | **Dissolve** | Contract dissolved, all scopes revoked, actions fail | Revocation is real |
+| 2 | **Raanan's Personal Agent Books Flight** | COMMIT on `travel.flights` with valid scope → success | Receipts are verifiable |
+| 3 | **Yaki's Personal Agent Tries Hotel Booking** | COMMIT on OBSERVE+PROPOSE scope → `TYPE_ESCALATION` | Scope enforcement works |
+| 4 | **Agents Vote to Widen Scope + Rebook** | 5/8 governance vote grants COMMIT → Yaki rebooks | Bounded delegation via governance |
+| 5 | **Dissolve Coalition** | Contract dissolved, all scopes revoked, actions fail | Revocation is real |
 
 ### API Endpoints
 
@@ -156,6 +156,7 @@ POST /vote/open               Open a governance vote
 POST /vote/cast               Cast vote (auto-resolves at threshold)
 POST /demo/reset              Reset to clean state
 GET  /demo/status             Current state summary
+GET  /demo/state              Enriched state (principals, scopes, governance, budget)
 WS   /ws                      Real-time event broadcast
 ```
 

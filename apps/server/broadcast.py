@@ -18,4 +18,5 @@ def receipt_to_event(receipt: Receipt, summary: str = "") -> dict:
         "outcome": receipt.outcome,
         "summary": summary,
         "detail": receipt.detail,
+        "scope_id": receipt.scope_id,
     }

@@ -19,7 +19,7 @@ export default function FlowRaananBook({ disabled, onComplete }: Props) {
       action: {
         type: 'COMMIT',
         namespace: 'travel.flights',
-        resource: 'flight:LHR-TLV-20250601',
+        resource: 'flight:LHR-FCO-20250601',
         params: { cost: 280 },
       },
       budget_amounts: { EUR: '280.00' },
@@ -31,7 +31,7 @@ export default function FlowRaananBook({ disabled, onComplete }: Props) {
   return (
     <FlowRunner
       number={2}
-      title="Raanan Books Flight"
+      title="Raanan's Personal Agent Books Flight"
       description="COMMIT on travel.flights scope with valid authority -- should succeed"
       assertion="Verifiable Receipts"
       disabled={disabled}

@@ -104,8 +104,8 @@ class DemoState:
             contract_id=CONTRACT_ID,
             version="0.2",
             purpose={
-                "title": "Group Trip to Tel Aviv",
-                "description": "8 friends coordinating flights and accommodation",
+                "title": "Group Trip to Italy",
+                "description": "8 friends coordinating flights and accommodation in Italy",
                 "expires_at": EXPIRES_AT,
             },
             principals=[
@@ -393,6 +393,70 @@ class DemoState:
         receipts.append(rev_receipt)
 
         return receipts
+
+    # ── Enriched state (for frontend) ─────────────────────────
+
+    # Scope-to-principal mapping — demo fixture knowledge, not protocol concept
+    _SCOPE_PRINCIPAL_MAP: dict[str, str] = {
+        ROOT_SCOPE_ID: "principal:coordinator",
+        RAANAN_FLIGHTS_ID: "principal:raanan",
+        YAKI_ACCOMMODATION_ID: "principal:yaki",
+    }
+
+    def enriched_state(self) -> dict:
+        """Return enriched demo state for GET /demo/state."""
+        contract = self.runtime.contracts.get(CONTRACT_ID)
+        if not contract:
+            return {"contract": None, "principals": [], "governance": {},
+                    "budget_policy": {}, "scopes": [], "receipt_count": 0}
+
+        # Build scope list with principal assignments
+        scope_principal_map = dict(self._SCOPE_PRINCIPAL_MAP)
+        for vote in self.votes.values():
+            if vote.new_scope_id:
+                scope_principal_map[vote.new_scope_id] = "principal:yaki"
+
+        all_scope_ids = [ROOT_SCOPE_ID, RAANAN_FLIGHTS_ID, YAKI_ACCOMMODATION_ID]
+        for vote in self.votes.values():
+            if vote.new_scope_id:
+                all_scope_ids.append(vote.new_scope_id)
+
+        scopes_list = []
+        for sid in all_scope_ids:
+            s = self.runtime.scopes.get(sid)
+            if s:
+                scopes_list.append({
+                    "id": s.id,
+                    "principal_id": scope_principal_map.get(s.id),
+                    "namespace": s.domain.namespace,
+                    "types": [t.value for t in s.domain.types],
+                    "predicate": s.predicate,
+                    "ceiling": s.ceiling,
+                    "delegate": s.delegate,
+                    "status": s.status.value,
+                    "issued_by": s.issued_by,
+                    "issued_by_scope_id": s.issued_by_scope_id,
+                })
+
+        return {
+            "contract": {
+                "id": CONTRACT_ID,
+                "title": contract.purpose.get("title", ""),
+                "description": contract.purpose.get("description", ""),
+                "status": contract.activation["status"],
+                "hash": contract.descriptor_hash,
+                "version": contract.version,
+                "expires_at": contract.purpose.get("expires_at"),
+            },
+            "principals": [
+                {"principal_id": p["principal_id"], "role": p["role"]}
+                for p in contract.principals
+            ],
+            "governance": contract.governance,
+            "budget_policy": contract.budget_policy,
+            "scopes": scopes_list,
+            "receipt_count": len(self.runtime.receipts),
+        }
 
     # ── Status ────────────────────────────────────────────────
 

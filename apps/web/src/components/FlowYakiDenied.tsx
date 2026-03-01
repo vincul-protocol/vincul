@@ -19,7 +19,7 @@ export default function FlowYakiDenied({ disabled, onComplete }: Props) {
       action: {
         type: 'COMMIT',
         namespace: 'travel.accommodation',
-        resource: 'hotel:hilton-tlv',
+        resource: 'hotel:rome-center',
         params: { cost: 450 },
       },
       budget_amounts: { EUR: '450.00' },
@@ -31,7 +31,7 @@ export default function FlowYakiDenied({ disabled, onComplete }: Props) {
   return (
     <FlowRunner
       number={3}
-      title="Yaki Tries Hotel Booking"
+      title="Yaki's Personal Agent Tries Hotel Booking"
       description="COMMIT on OBSERVE+PROPOSE-only scope -- should fail with TYPE_ESCALATION"
       assertion="Scope Enforcement"
       disabled={disabled}
