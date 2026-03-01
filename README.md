@@ -256,9 +256,7 @@ All tests use `unittest`. Each test file is self-contained — no shared fixture
 
 The Vincul protocol specification (v0.2) is complete and fully test-vector verified.
 
-The current reference implementation includes a signed WebSocket transport stub used for demonstration and validation flows.
-
-A peer-to-peer transport layer (VinculNet) is specified and in progress. This layer will provide authenticated agent-to-agent communication over signed channels, using the existing identity and receipt primitives.
+A peer-to-peer transport layer (VinculNet) is specified and in progress. This layer will provide authenticated agent-to-agent communication over signed channels, using the existing identity and receipt primitives. The MVP implementation targets key exchange peer identity binding, and signed message transport over WebSocket.
 
 ---
 
