@@ -106,10 +106,10 @@ It eliminates structural ambiguity.
 All authority in Vincul derives from explicit, revocable consent.
 
 Consent must be:
-	•	Affirmative
-	•	Contextual
-	•	Specific to a boundary
-	•	Revocable within defined constraints
+- Affirmative
+- Contextual
+- Specific to a boundary
+- Revocable within defined constraints
 
 Implicit agreement is insufficient.
 If consent cannot be demonstrated, authority does not exist.
@@ -120,20 +120,15 @@ and independently revocable within the bounds of the Coalition Contract.
 
 A Coalition is not a group that agreed once.
 It is a structure in which ongoing consent remains legible.
-
 But consent alone is not the innovation.
-
 The innovation lies in the ordering of authority.
-
 Most digital authorization systems begin with identity.
-
 An identity is granted permissions.
 Permissions may be delegated.
 Governance, if it exists, is layered above the authorization model or handled externally.
 
 This ordering makes authority ambient.
 Identity exists prior to the boundary.
-
 Vincul reverses this.
 
 In Vincul, the **Coalition Contract is the root of authority**.
@@ -142,11 +137,11 @@ Identity does not confer power.
 The contract does.
 
 Authority flows in a defined order:
-	1.	A purpose-bound Coalition Contract
-	2.	Explicit consent of its principals
-	3.	Bounded scopes derived from that contract
-	4.	Deterministic enforcement
-	5.	Receipts that record every result
+- A purpose-bound Coalition Contract
+- Explicit consent of its principals
+- Bounded scopes derived from that contract
+- Deterministic enforcement
+- Receipts that record every result
 
 Identity is meaningful only within a contract’s boundary.
 Outside that boundary, identity carries no authority.
@@ -154,10 +149,10 @@ Outside that boundary, identity carries no authority.
 This inversion is deliberate.
 
 By placing the Coalition Contract at the root:
-	•	Governance is not external — it is structural.
-	•	Budgets are not policy overlays — they are protocol primitives.
-	•	Threshold rules are not application logic — they are enforcement inputs.
-	•	Delegation is not ambient — it is bounded.
+- Governance is not external — it is structural.
+- Budgets are not policy overlays — they are protocol primitives.
+- Threshold rules are not application logic — they are enforcement inputs.
+- Delegation is not ambient — it is bounded.
 
 The novelty of Vincul does not lie in new cryptography, new delegation graphs, or new voting theory.
 Each of those ideas has precedent.
@@ -167,9 +162,7 @@ rather than a configuration layered atop identity.
 
 When contract precedes identity, authority becomes composable.
 When identity precedes contract, authority accumulates.
-
 Vincul chooses composition over accumulation.
-
 This is the architectural commitment that distinguishes it from single-principal delegation models, identity-centric permission systems, and governance frameworks that operate outside enforcement.
 
 The coalition is the root.
