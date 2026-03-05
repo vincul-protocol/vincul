@@ -20,6 +20,7 @@ from vincul.transport.handshake import (
 from vincul.transport.registry import PeerRegistry
 from vincul.transport.keys import load_or_create_keypair
 from vincul.transport.peer import VinculPeer
+from vincul.transport.protocol_peer import ProtocolPeer
 
 __all__ = [
     "MessageEnvelope",
@@ -33,4 +34,5 @@ __all__ = [
     "PeerRegistry",
     "VinculPeer",
     "load_or_create_keypair",
+    "ProtocolPeer",
 ]
