@@ -246,6 +246,14 @@ VinculNet does not:
 VinculNet is the network substrate.
 Vincul is the institutional layer on top of it.
 
+Stage 1 implementation provides:
+- **MessageEnvelope** — signed, integrity-protected message wrapper with domain-separated hashing
+- **HelloMessage** — mutual handshake for identity binding (TOFU trust model)
+- **PeerRegistry** — in-memory map of authenticated peers (principal_id → pubkey + connection)
+- **VinculPeer** — symmetric async peer that can both listen and connect over WebSocket
+
+See `spec/transport/VINCULNET.md` for the full transport specification.
+
 ---
 
 ### Negotiation

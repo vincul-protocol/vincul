@@ -147,6 +147,17 @@ Every object type has a unique domain separation prefix. The prefix is a UTF-8 s
 
 The null byte delimiter ensures that a prefix that is a prefix of another prefix cannot produce identical inputs. (E.g., `PACT_SCOPE_V1` and `PACT_SCOPE_V10` would otherwise be ambiguous without the delimiter.)
 
+### 4.0.1 Transport-layer domain tags (VinculNet)
+
+VinculNet uses separate domain tags for transport-layer signing and hashing. These follow the same pattern (domain prefix + null delimiter + payload) but are distinct from protocol-layer tags:
+
+| Transport Object | Domain Prefix |
+|---|---|
+| Message envelope (signing + payload hash) | `VINCULNET_ENVELOPE_V1\x00` |
+| Handshake HELLO (signing) | `VINCULNET_HELLO_V1\x00` |
+
+Transport tags use the `VINCULNET_` prefix (not `PACT_`) to maintain clear separation between protocol objects and network plumbing. They are defined in `src/vincul/transport/` and are not part of the core hashing module's `DOMAIN_PREFIXES` dict.
+
 ### 4.1 Version upgrade path
 
 When the protocol advances to v0.2 or v1.0, new domain prefixes are introduced (e.g., `PACT_SCOPE_V2\x00`). Old and new hashes are never interchangeable. Version negotiation is handled at the transport layer, not the hashing layer.

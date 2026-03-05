@@ -50,6 +50,8 @@ spec/
   implementation/
     COMPLIANCE_PROFILES.md      Implementation-declared bounds; interoperability rule
     GOTCHAS.md                  Implementation footguns; resolved gap history
+  transport/
+    VINCULNET.md                VinculNet Stage 1: envelope, handshake, peer registry
 ```
 
 ---
