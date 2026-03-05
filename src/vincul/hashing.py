@@ -88,6 +88,11 @@ def _serialize_string(s: str) -> str:
 
 # ── Core hash functions ───────────────────────────────────────
 
+def domain_hash(tag: bytes, data: bytes) -> str:
+    """Domain-prefixed SHA-256 hash. Returns lowercase 64-char hex."""
+    return hashlib.sha256(tag + data).hexdigest()
+
+
 def vincul_hash(object_type: str, payload: dict) -> str:
     """
     Compute a domain-separated SHA-256 hash over a JCS-serialized payload.
@@ -102,7 +107,7 @@ def vincul_hash(object_type: str, payload: dict) -> str:
             f"Valid: {sorted(DOMAIN_PREFIXES)}"
         )
     prefix = DOMAIN_PREFIXES[object_type].encode("utf-8")
-    return hashlib.sha256(prefix + jcs_serialize(payload)).hexdigest()
+    return domain_hash(prefix, jcs_serialize(payload))
 
 
 def vincul_hash_constraint(expression: str) -> str:
@@ -111,7 +116,7 @@ def vincul_hash_constraint(expression: str) -> str:
     The expression is the raw DSL string, e.g. "TOP" or "action.params.x <= 60".
     """
     prefix = DOMAIN_PREFIXES["constraint"].encode("utf-8")
-    return hashlib.sha256(prefix + expression.encode("utf-8")).hexdigest()
+    return domain_hash(prefix, expression.encode("utf-8"))
 
 
 def attestation_signature_message(

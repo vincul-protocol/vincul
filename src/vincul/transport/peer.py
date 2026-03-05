@@ -92,9 +92,11 @@ class VinculPeer:
         peer_id = None
         try:
             peer_id = await self._handshake_as_acceptor(websocket)
-            if peer_id:
-                logger.info(f"[{self.my_id}] Handshake complete with {peer_id}")
-                await self._receive_loop(websocket, peer_id)
+            if not peer_id:
+                await websocket.close(code=1008, reason="handshake failed")
+                return
+            logger.info(f"[{self.my_id}] Handshake complete with {peer_id}")
+            await self._receive_loop(websocket, peer_id)
         except websockets.exceptions.ConnectionClosed:
             logger.info(f"[{self.my_id}] Connection closed with {peer_id or 'unknown'}")
         finally:
@@ -171,8 +173,17 @@ class VinculPeer:
         """Parse, verify, and register a HELLO message. Returns peer_id or None."""
         try:
             data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            logger.warning(f"[{self.my_id}] Invalid HELLO message: {e}")
+            return None
+
+        if data.get("type") != "hello":
+            logger.warning(f"[{self.my_id}] Expected HELLO, got type={data.get('type')!r}")
+            return None
+
+        try:
             hello = HelloMessage.from_dict(data)
-        except (json.JSONDecodeError, KeyError) as e:
+        except (KeyError, ValueError, TypeError) as e:
             logger.warning(f"[{self.my_id}] Invalid HELLO message: {e}")
             return None
 
@@ -225,7 +236,10 @@ class VinculPeer:
     async def _receive_loop(self, websocket, peer_id: str) -> None:
         """Listen for messages from a connected peer."""
         async for raw in websocket:
-            self._handle_incoming(raw, peer_id)
+            try:
+                self._handle_incoming(raw, peer_id)
+            except Exception as e:
+                logger.error(f"[{self.my_id}] Error handling message from {peer_id}: {e}")
 
     def _handle_incoming(self, raw_message: str, expected_sender_id: str) -> None:
         """
@@ -241,8 +255,15 @@ class VinculPeer:
         try:
             data = json.loads(raw_message)
             envelope = MessageEnvelope.from_dict(data)
-        except (json.JSONDecodeError, KeyError) as e:
+        except Exception as e:
             logger.warning(f"[{self.my_id}] Invalid envelope: {e}")
+            return
+
+        # Reject unknown envelope version
+        if envelope.envelope_version != "1.0":
+            logger.warning(
+                f"[{self.my_id}] Unknown envelope version: {envelope.envelope_version!r}"
+            )
             return
 
         # Reject sender_id mismatch (spoofing attempt)
@@ -279,4 +300,7 @@ class VinculPeer:
             except json.JSONDecodeError:
                 logger.warning(f"[{self.my_id}] Could not decode payload as JSON")
                 return
-            self._message_handler(envelope.sender_id, payload)
+            if asyncio.iscoroutinefunction(self._message_handler):
+                asyncio.create_task(self._message_handler(envelope.sender_id, payload))
+            else:
+                self._message_handler(envelope.sender_id, payload)

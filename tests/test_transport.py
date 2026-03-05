@@ -10,12 +10,12 @@ import unittest
 
 
 from vincul.identity import KeyPair
+from vincul.hashing import domain_hash
 from vincul.transport.envelope import (
     MessageEnvelope,
     sign_envelope,
     verify_envelope,
     ENVELOPE_DOMAIN_TAG,
-    vinculnet_hash,
 )
 from vincul.transport.handshake import (
     HelloMessage,
@@ -156,17 +156,17 @@ class TestEnvelope(unittest.TestCase):
         )
         self.assertNotEqual(env1.payload_hash, env2.payload_hash)
 
-    def testvinculnet_hash_deterministic(self):
+    def testdomain_hash_deterministic(self):
         """Same input produces same hash."""
-        h1 = vinculnet_hash(ENVELOPE_DOMAIN_TAG, b"test")
-        h2 = vinculnet_hash(ENVELOPE_DOMAIN_TAG, b"test")
+        h1 = domain_hash(ENVELOPE_DOMAIN_TAG, b"test")
+        h2 = domain_hash(ENVELOPE_DOMAIN_TAG, b"test")
         self.assertEqual(h1, h2)
         self.assertEqual(len(h1), 64)
 
-    def testvinculnet_hash_domain_separation(self):
+    def testdomain_hash_domain_separation(self):
         """Different tags produce different hashes for same data."""
-        h1 = vinculnet_hash(b"TAG_A\x00", b"test")
-        h2 = vinculnet_hash(b"TAG_B\x00", b"test")
+        h1 = domain_hash(b"TAG_A\x00", b"test")
+        h2 = domain_hash(b"TAG_B\x00", b"test")
         self.assertNotEqual(h1, h2)
 
 

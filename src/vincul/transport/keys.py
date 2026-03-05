@@ -18,7 +18,6 @@ from cryptography.hazmat.primitives.serialization import (
     Encoding,
     NoEncryption,
     PrivateFormat,
-    PublicFormat,
 )
 
 from vincul.identity import KeyPair
@@ -52,6 +51,8 @@ def load_or_create_keypair(
         pem_bytes = key_path.read_bytes()
         from cryptography.hazmat.primitives.serialization import load_pem_private_key
         private_key = load_pem_private_key(pem_bytes, password=None)
+        if not isinstance(private_key, Ed25519PrivateKey):
+            raise ValueError(f"Key for {principal_id} is not Ed25519")
         keypair = KeyPair(
             principal_id=principal_id,
             private_key=private_key,

@@ -17,14 +17,13 @@ Security rules:
 from __future__ import annotations
 
 import base64
-import hashlib
 import uuid as uuid_mod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from vincul.hashing import jcs_serialize
+from vincul.hashing import domain_hash, jcs_serialize
 from vincul.identity import KeyPair, verify
 
 
@@ -33,13 +32,6 @@ from vincul.identity import KeyPair, verify
 ENVELOPE_DOMAIN_TAG = b"VINCULNET_ENVELOPE_V1\x00"
 
 ENVELOPE_VERSION = "1.0"
-
-
-# ── Helpers ──────────────────────────────────────────────────
-
-def vinculnet_hash(tag: bytes, data: bytes) -> str:
-    """Domain-prefixed SHA-256 hash, matching vincul.hashing pattern."""
-    return hashlib.sha256(tag + data).hexdigest()
 
 
 # ── MessageEnvelope ──────────────────────────────────────────
@@ -135,7 +127,7 @@ def sign_envelope(
     payload_bytes = jcs_serialize(payload)
 
     # Hash payload with domain tag
-    payload_hash = vinculnet_hash(ENVELOPE_DOMAIN_TAG, payload_bytes)
+    payload_hash = domain_hash(ENVELOPE_DOMAIN_TAG, payload_bytes)
 
     # Generate metadata
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -175,7 +167,7 @@ def verify_envelope(
     Returns True if both checks pass, False otherwise.
     """
     # Check payload integrity
-    recomputed_hash = vinculnet_hash(ENVELOPE_DOMAIN_TAG, envelope.payload)
+    recomputed_hash = domain_hash(ENVELOPE_DOMAIN_TAG, envelope.payload)
     if recomputed_hash != envelope.payload_hash:
         return False
 
