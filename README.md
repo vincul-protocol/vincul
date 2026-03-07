@@ -41,7 +41,19 @@ src/vincul/                        Core protocol library (11 modules)
 ├── budget.py                    BudgetLedger — Decimal arithmetic, per-scope ceilings
 │
 ├── validator.py                 7-step enforcement pipeline (imports only interfaces)
-└── runtime.py                   VinculRuntime — composition root
+├── runtime.py                   VinculRuntime — composition root
+│
+└── sdk/                         High-level SDK for building agents & tools
+    ├── context.py               VinculContext — one-stop coalition setup
+    ├── decorators.py            @vincul_tool, @tool_operation, ToolResult
+    └── agent.py                 @vincul_agent, @agent_action
+
+samples/                           Sample agents & tools (pip install vincul[samples])
+└── cross_vendor_tool_marketplace/
+    ├── vendor_a_agent.py        Buyer agent — @vincul_agent + @agent_action
+    ├── vendor_b_tool.py         Order tool — @vincul_tool + @tool_operation
+    ├── demo.py                  End-to-end 9-step demo runner
+    └── spec.md                  Scenario spec and SDK alignment notes
 
 tests/                           425 unit tests across 8 files
 ci/check_vectors.py              13-vector CI gate (hash correctness)
@@ -119,6 +131,22 @@ pip install -e .
 
 This installs the `vincul` package with its only dependency (`cryptography`).
 
+### With samples
+
+Install the core library plus sample agents and tools:
+
+```bash
+git clone https://github.com/vincul-protocol/vincul.git && cd vincul
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[samples]"
+```
+
+Run the cross-vendor tool marketplace demo:
+
+```bash
+python -m samples.cross_vendor_tool_marketplace.demo
+```
+
 ### With demo server
 
 To run the interactive demo, install with the `server` extra and build the frontend:
@@ -130,6 +158,12 @@ pip install -e ".[server]"
 
 # Build the frontend
 cd apps/web && npm install && npm run build && cd ../..
+```
+
+### All extras
+
+```bash
+pip install -e ".[samples,server,dev]"
 ```
 
 ### Verify installation
