@@ -5,14 +5,21 @@
 
 ## Preamble
 
-Every day, humans attempt to coordinate with each other.
+Every day, groups attempt to coordinate with each other.
 
-Most coordination fails silently — not because people are untrustworthy,
+Most coordination fails silently — not because participants are malicious,
 but because shared intent has no standard form.
 Authority is assumed, not declared.
 Outcomes are disputed, not recorded.
 
-Vincul is the attempt to give shared intent a standard form.
+Vincul is an attempt to give shared intent a standard form.
+
+It defines a structure in which collective action becomes:
+- explicitly bounded
+- machine-verifiable
+- auditable after the fact
+
+This document describes the design philosophy behind the protocol.
 
 ---
 
@@ -39,11 +46,30 @@ Boundaries must be:
 - Human-readable
 - Time-scoped by default
 
+## 1.1 Autonomous Actors
+
+Increasingly, actions in digital systems are performed by software agents
+operating with partial or delayed human oversight.
+
+In such environments, authority must remain explicit even when execution
+is automated.
+
+Vincul applies the same boundary model to automated actors.
+Agents may propose actions, but those actions must still be validated
+against explicit authority before they produce real-world side effects.
+
+The protocol therefore separates:
+- **proposal** of an action
+- **validation** of authority
+- **commitment** of the result
+
+This separation ensures that autonomous execution remains bounded.
+
 ---
 
 ## 2. What Is a Receipt?
 
-A receipt is the canonical record of a collective action.
+A receipt is the canonical record of a bounded action performed under a coalition's authority.
 
 Every action under Vincul must generate a receipt structured as:
 
@@ -73,7 +99,7 @@ In multi-party actions, receipts must be **symmetric**.
 Every party sees the same narrative.
 Asymmetric information about a shared action is a protocol violation.
 
-Shared transparency is not a feature.
+Shared transparency is not a convenience.
 It is a structural requirement for legitimate collective action.
 When everyone sees the same record, blame dissolves into authorship.
 
@@ -96,8 +122,16 @@ When collective action fails, it fails because:
 - Authority was ambiguous
 - Result was disputed
 
-Vincul does not eliminate human conflict.
-It eliminates structural ambiguity.
+Vincul eliminates structural ambiguity.
+
+In practical systems this model appears as a validation step
+between a proposed action and its execution.
+
+An action may be proposed freely, but it may only commit if the
+relevant authority boundary validates the transition.
+
+If validation fails, the action does not occur and a failure receipt
+records the decision.
 
 ---
 
@@ -282,7 +316,7 @@ If this hypothesis is correct, Vincul becomes infrastructure.
 If it is incorrect, Vincul remains a well-specified experiment —
 one whose failure will be as legible as its receipts.
 
-Protocols that cannot be falsified cannot be trusted.
+Protocols that cannot be falsified cannot be evaluated.
 Vincul can be proven wrong. That is a strength, not a vulnerability.
 
 ---
@@ -306,21 +340,26 @@ They are the protocol's immune system.
 
 ## Closing
 
-Vincul is not a productivity tool.
-It is not an AI product.
-It is not a startup.
+Vincul is not an application.
+It is infrastructure.
+
+The protocol defines structures for bounded collective authority.
+Applications may be built on top of those structures,
+but the protocol itself remains implementation-agnostic.
 
 It is a protocol for bounded collective agency —
-the institutional primitive the internet was always missing.
+an attempt to provide an institutional primitive for the internet.
 
 All implementations must remain faithful to this philosophy.
 Deviation is not forbidden. It is simply no longer Vincul.
 
 ---
 
-*This document is the constitution.
-Every technical decision is measured against it.
-If the spec and this document conflict, this document wins.*
+*This document describes the philosophical constraints that guide the protocol.
+
+Every technical decision should be evaluated against these principles.
+If the specification appears to contradict them, the specification
+should be reconsidered.*
 
 ---
 `CC0 1.0 Universal — No rights reserved.`

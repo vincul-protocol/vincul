@@ -2,12 +2,14 @@
 
 **Bounded collective authority as infrastructure.**
 
-Vincul is a multi-principal coordination protocol with explicit boundaries, cryptographic receipts, and fail-closed enforcement. It enables people, agents, and services to act together under shared constraints — where every decision is scoped, every action is auditable, and every receipt is verifiable.
 
-Vincul’s core innovation is structural:
-it places the **Coalition Contract at the root of authority**, not identity.
-Authority does not flow from who you are — it flows from what the coalition explicitly bounded and consented to.
-This makes bounded collective authority a first-class protocol primitive rather than a policy layered on top of identity.
+Vincul is a governance layer for multi-principal systems. It allows people, agents, and services to act together under shared constraints — where every decision is scoped, every side-effecting action is validated, and every critical transition produces a cryptographically verifiable receipt.
+
+Vincul introduces **bounded collective authority** as a first-class primitive. Instead of authority flowing from identity, it flows from an explicit **Coalition Contract** that defines the participants, the governance rule, and the boundaries within which actions may occur.
+
+When an action is proposed, the Vincul validator enforces those boundaries deterministically — checking scope derivation, constraints, revocation status, and budgets before allowing a commit. If the action is accepted or rejected, a receipt records the decision.
+
+This model makes coordination auditable, enforceable, and locally verifiable.
 
 > *Coordination fails not because people are untrustworthy, but because the tools for establishing shared boundaries have been too expensive, too slow, or too opaque.* — [PHILOSOPHY.md](vincul-spec/PHILOSOPHY.md)
 

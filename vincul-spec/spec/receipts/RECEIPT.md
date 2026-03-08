@@ -1,27 +1,31 @@
 # Vincul Protocol — Receipt Schema
-`spec/receipts/RECEIPT.md` · Draft v0.1
+`spec/receipts/RECEIPT.md` · Draft v0.2
 
 ---
 
 ## Purpose
 
-A **Receipt** is the canonical record of an event that occurred within a Vincul contract. Receipts are the audit substrate of the protocol. Every delegation, commitment, revocation, and failure produces one.
+A **Receipt** is the canonical audit artifact of the Vincul protocol.
+
+Receipts record protocol-relevant events that occur under the authority
+of a Coalition Contract. Every delegation, commitment, revocation,
+or protocol failure produces a Receipt.
 
 Receipts are not logs. They are not notifications. They are not confirmations.
 
-A Receipt is a **machine-verifiable, attributable, immutable claim** that a specific event occurred under a specific authority at a specific time.
+A Receipt is a **machine-verifiable, attributable, immutable claim**
+that a specific event occurred under a specific authority at a specific time.
 
 The structure of every Receipt follows a single envelope:
 
-```
-Intent · Authority · Result
-```
+**Intent · Authority · Result**
 
 - **Intent** — what was being attempted, and by whom
 - **Authority** — the scope and contract under which the attempt was authorized
 - **Result** — what actually happened, deterministically recorded
 
-This structure is not optional. Every Receipt kind defined in this document is an instance of this envelope. Implementations may not define receipt kinds that omit any of the three fields.
+Every Receipt kind defined in this document must conform to this envelope.
+Implementations may not define receipt kinds that omit any of the three fields.
 
 ---
 
@@ -37,7 +41,10 @@ This structure is not optional. Every Receipt kind defined in this document is a
 | **Hashable** | Every Receipt has a `receipt_hash` covering all fields |
 | **Chainable** | Receipts may reference prior Receipts by `receipt_hash`; this forms an audit chain, not a blockchain |
 
-Receipts are **not** encrypted by default. Confidentiality is an implementation-layer concern. The protocol requires that Receipts be producible and verifiable; it does not require that they be public.
+Receipts are **not encrypted by default**. Confidentiality is an implementation-layer concern. 
+
+The protocol requires that Receipts be producible and verifiable. It does not require that they be publicly visible.
+
 
 ---
 
@@ -65,9 +72,11 @@ Receipt:
     outcome:       "success" | "failure" | "partial" | "pending"
     detail:        ReceiptKindResult       # kind-specific result fields (see §4)
 
-  prior_receipt:   uuid | null             # receipt_hash of immediately preceding receipt in chain, if any
+  prior_receipt:   hash | null             # receipt_hash of immediately preceding receipt in chain, if any
   receipt_hash:    hash                    # deterministic hash of all fields above (excluding receipt_hash itself)
 ```
+
+All fields in the envelope are included in `receipt_hash` except `receipt_hash` itself.
 
 ### 2.1 Immutability
 
@@ -75,26 +84,28 @@ Once a Receipt is issued, no field may be modified. If a subsequent event modifi
 
 ### 2.2 Self-containment requirement
 
-A Receipt must contain sufficient information to verify its claim without live resolution of external state. Specifically:
+A Receipt must contain sufficient information to verify its claim without live resolution of external state. Specifically, verification must not require resolving live external state at verification time.
 
 - The `scope_id` must be accompanied by the scope's `descriptor_hash` in the Authority block (so the scope as-issued can be verified without fetching it live)
 - The `contract_id` must be accompanied by the contract's `descriptor_hash`
 - If a Receipt references another Receipt (via `prior_receipt`), the reference is by `receipt_hash`, not by mutable identifier
+
+In practice, implementations must use the extended authority block below, which includes the descriptor hashes required for self-contained verification.
 
 The extended authority block:
 
 ```yaml
 authority:
   scope_id:           uuid
-  scope_hash:         hash          # descriptor_hash of the scope at time of action
+  scope_hash:         hash
   contract_id:        uuid
-  contract_hash:      hash          # descriptor_hash of the Coalition Contract
+  contract_hash:      hash
   signatories:        [principal_id]
 ```
 
 ### 2.3 Chaining
 
-`prior_receipt` is optional. When populated, it links this Receipt to the immediately preceding Receipt in the same logical event chain (e.g., a Revert Attempt Receipt links to its triggering Revocation Receipt). Chains form a directed acyclic graph. Cycles are malformed.
+`prior_receipt` is optional. When populated, it links this Receipt to the immediately preceding Receipt in the same logical event chain (e.g., a Revert Attempt Receipt links to its triggering Revocation Receipt). Chains form a directed acyclic graph (DAG). Each receipt may reference at most one immediate predecessor, but multiple receipts may reference the same predecessor, forming a directed acyclic graph (DAG). Cycles are malformed.
 
 The chain is an audit trail, not a consensus mechanism. No distributed agreement is required to produce or verify a chain.
 
@@ -102,7 +113,7 @@ The chain is an audit trail, not a consensus mechanism. No distributed agreement
 
 ## 3. Receipt Kinds
 
-v0.2 defines seven Receipt kinds. No other kinds are valid in v0.2.
+v0.2 defines eight Receipt kinds. No other kinds are valid in v0.2.
 
 | Kind | When produced |
 |---|---|
@@ -152,14 +163,14 @@ result:
     action_type:         "COMMIT"
     namespace:           hierarchical_path
     resource:            resource_identifier
-    params:              map<string, scalar>      # the params as evaluated
+    params:              map<string, scalar>      # parameters after validator evaluation and normalization
     reversible:          boolean                  # whether the commitment can be reverted
     revert_window:       duration | null          # if reversible, how long revert is available
     external_ref:        string | null            # implementation-defined external identifier (e.g. booking ID)
     budget_consumed:     map<string, scalar> | null  # budget dimensions consumed, if any
 ```
 
-> **Note (non-normative):** `external_ref` is declarative. The protocol does not verify correspondence between this field and any external system. Cross-system proof of commitment is out of scope for v0.1 and may be specified in a future audit or attestation extension.
+> **Note (non-normative):** `external_ref` is declarative. The protocol does not verify correspondence between this field and any external system. Cross-system proof of commitment is out of scope for v0.2 and may be specified in a future audit or attestation extension.
 
 `reversible` and `revert_window` are declared by the implementation at commit time. The protocol does not compute reversibility — it records what the implementation declares. False declarations are an implementation compliance violation, not a protocol error.
 
@@ -180,7 +191,7 @@ result:
     non_revertable:      [uuid]             # receipt_ids of Non-Revertable Notice Receipts triggered
 ```
 
-`outcome: "pending"` is used when `effective_at` is in the future. The Receipt is still issued immediately; it records the scheduled revocation. A second Revocation Receipt is not produced when `effective_at` arrives — the original Receipt is the authoritative record. Validators MUST apply `effective_at` deterministically; time passing is a condition, not an event, and no additional Receipt is produced when the time threshold is crossed.
+`outcome: "pending"` is used when `effective_at` is in the future. The Receipt is still issued immediately; it records the scheduled revocation. A second Revocation Receipt is not produced when `effective_at` arrives — the original Receipt is the authoritative record. Validators MUST apply `effective_at` deterministically; the transition at `effective_at` is treated as a condition rather than a protocol event, and therefore does not produce an additional Receipt.
 
 ### 4.4 Revert Attempt Receipt
 
@@ -205,19 +216,19 @@ result:
   outcome: "failure"
   detail:
     failed_operation:    FailureKind
-    reason:              string             # human-readable; not parsed by protocol
+    message:             string             # human-readable explanation
     error_code:          FailureCode        # machine-readable; see §5
-    recoverable:         boolean            # whether the operation may be retried
-    scope_id:            uuid | null        # the scope involved, if determinable
+    recoverable:         boolean
+    scope_id:            uuid | null
 ```
 
-The Failure Receipt is the only Receipt kind whose `authority` block may be partially populated — specifically, if the failure occurs before authorization is established, `scope_id` and `scope_hash` may be null.
+Failure Receipts must still include the `intent` block, even if the operation fails before authority validation.
 
 ---
 
 ## 5. Failure Codes
 
-*Updated in v0.2. Full normative definitions, precedence rules, and required detail fields are in `spec/receipts/FAILURE_CODES.md`. This table is the authoritative enumeration; FAILURE_CODES.md governs semantics.*
+*Updated in v0.2. Failure codes allow deterministic classification of protocol failures across implementations. Full normative definitions, precedence rules, and required detail fields are in `spec/receipts/FAILURE_CODES.md`. This table is the authoritative enumeration; FAILURE_CODES.md governs semantics.*
 
 ### 5.1 Scope-level codes
 
@@ -270,7 +281,7 @@ v0.2 Failure Receipts MUST include a `message` field in `result.detail`: a singl
 
 ### 6.1 Symmetry
 
-Every COMMIT action that produces a Commitment Receipt must be matched by a corresponding Commitment Receipt visible to all parties with authority over the scope under which the action was committed. Receipts are not private to the committing agent.
+Every COMMIT action that produces a Commitment Receipt must produce a Receipt visible to all parties that possess authority over the scope under which the action was committed.
 
 ### 6.2 Determinism
 
@@ -304,7 +315,7 @@ Every Receipt must be attributable to a specific `initiated_by` identity. Anonym
 | 2 | Receipts are immutable; subsequent events produce new Receipts with `prior_receipt` references |
 | 3 | Every Receipt carries `scope_hash` and `contract_hash` for self-contained verification |
 | 4 | `receipt_hash` covers all fields except itself and must be reproducible by any validator |
-| 5 | Five Receipt kinds are defined in v0.1; no others are valid |
+| 5 | v0.2 defines eight Receipt kinds; implementations must not invent additional kinds without a protocol revision |
 | 6 | Failure Receipts are required; failing to produce one on failure is a compliance violation |
 | 7 | `initiated_by` is always required; anonymous Receipts are malformed |
 | 8 | Commitment Receipts must declare `reversible`; the protocol records the declaration, not the truth |
