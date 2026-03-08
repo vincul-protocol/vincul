@@ -256,6 +256,55 @@ See `spec/transport/VINCULNET.md` for the full transport specification.
 
 ---
 
+### ProtocolPeer
+
+A composition of VinculPeer and VinculRuntime that enables Vincul protocol
+operations over the network.
+
+A ProtocolPeer:
+- Runs a local VinculRuntime for action validation and enforcement
+- Broadcasts success receipts to all connected peers
+- Verifies incoming receipts against local state (hash cross-checking)
+- Silently rejects receipts with mismatched scope or contract hashes
+
+ProtocolPeer is the unit of participation in a networked coalition.
+Each Principal's Agent operates through a ProtocolPeer instance.
+
+See `spec/transport/VINCULNET.md §8` for the specification.
+
+---
+
+### MessageEnvelope
+
+The signed, integrity-protected wrapper for all VinculNet messages after
+handshake. Contains sender/recipient IDs, a JCS-serialized payload,
+domain-separated payload hash, and an Ed25519 signature over the metadata.
+
+See `spec/transport/VINCULNET.md §1`.
+
+---
+
+### HelloMessage
+
+The mutual handshake message exchanged once per connection to establish
+identity binding between two peers. Contains the sender's principal ID,
+public key, and an Ed25519 signature. Uses TOFU (trust-on-first-use)
+trust model.
+
+See `spec/transport/VINCULNET.md §2`.
+
+---
+
+### PeerRegistry
+
+An in-memory map of authenticated VinculNet peers, populated after
+successful handshake. Maps `principal_id → (pubkey, connection)`.
+Rejects public key changes mid-session (fail-closed).
+
+See `spec/transport/VINCULNET.md §3`.
+
+---
+
 ### Negotiation
 
 The structured exchange between two or more Agents to reach

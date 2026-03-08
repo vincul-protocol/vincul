@@ -52,10 +52,10 @@ class VinculPeer:
         self.my_id = my_id
         self.keypair = keypair
         self.registry = PeerRegistry()
-        self._message_handler: Callable | None = None
+        self._message_handler: Callable[[str, dict], None] | None = None
         self._server: Any = None
 
-    def on_message(self, handler: Callable) -> None:
+    def on_message(self, handler: Callable[[str, dict], None]) -> None:
         """
         Register a callback for verified incoming messages.
 
@@ -300,7 +300,4 @@ class VinculPeer:
             except json.JSONDecodeError:
                 logger.warning(f"[{self.my_id}] Could not decode payload as JSON")
                 return
-            if asyncio.iscoroutinefunction(self._message_handler):
-                asyncio.create_task(self._message_handler(envelope.sender_id, payload))
-            else:
-                self._message_handler(envelope.sender_id, payload)
+            self._message_handler(envelope.sender_id, payload)
