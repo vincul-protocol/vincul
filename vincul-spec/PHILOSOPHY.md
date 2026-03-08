@@ -1,5 +1,5 @@
 # Vincul Protocol — Philosophy
-`spec/PHILOSOPHY.md` · Draft v0.1
+`spec/PHILOSOPHY.md` · Draft v0.2
 
 ---
 
@@ -355,9 +355,7 @@ Deviation is not forbidden. It is simply no longer Vincul.
 
 ---
 
-*This document describes the philosophical constraints that guide the protocol.
-
-Every technical decision should be evaluated against these principles.
+*This document describes the philosophical constraints that guide the protocol. Every technical decision should be evaluated against these principles.
 If the specification appears to contradict them, the specification
 should be reconsidered.*
 
