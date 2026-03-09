@@ -43,9 +43,16 @@ src/vincul/                        Core protocol library (11 modules)
 ├── budget.py                    BudgetLedger — Decimal arithmetic, per-scope ceilings
 │
 ├── validator.py                 7-step enforcement pipeline (imports only interfaces)
-└── runtime.py                   VinculRuntime — composition root
+├── runtime.py                   VinculRuntime — composition root
+└── transport/                   VinculNet peer-to-peer transport
+    ├── envelope.py              Signed message envelopes (Ed25519 + JCS)
+    ├── handshake.py             HELLO handshake for identity binding
+    ├── registry.py              In-memory peer registry
+    ├── peer.py                  VinculPeer — symmetric async WebSocket peer
+    ├── keys.py                  Key persistence (~/.vincul/keys/)
+    └── protocol_peer.py         ProtocolPeer — VinculPeer + VinculRuntime
 
-tests/                           425 unit tests across 8 files
+tests/                           467 unit tests across 10 files
 ci/check_vectors.py              13-vector CI gate (hash correctness)
 
 vincul-spec/                       Protocol specification
@@ -258,7 +265,12 @@ All tests use `unittest`. Each test file is self-contained — no shared fixture
 
 The Vincul protocol specification (v0.2) is complete and fully test-vector verified.
 
-VinculNet Stage 1 (authenticated peer transport) is implemented. Two `VinculPeer` instances can perform mutual HELLO handshake over WebSocket, exchange signed message envelopes, and reject tampered or spoofed messages. See `vincul-spec/spec/transport/VINCULNET.md` for the transport specification and `src/vincul/transport/` for the implementation.
+VinculNet Stage 1 (authenticated peer transport) and Stage 2 (protocol over the wire) are implemented.
+
+- **Stage 1:** Two `VinculPeer` instances can perform mutual HELLO handshake over WebSocket, exchange signed message envelopes, and reject tampered or spoofed messages.
+- **Stage 2:** `ProtocolPeer` composes `VinculPeer` + `VinculRuntime`. Agents can commit actions locally, validate through the 7-step enforcement pipeline, and broadcast success receipts to peers. Receiving peers verify receipt integrity and cross-check scope/contract hashes against their own local state.
+
+See `vincul-spec/spec/transport/VINCULNET.md` for the transport specification and `src/vincul/transport/` for the implementation.
 
 ---
 

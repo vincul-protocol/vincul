@@ -9,6 +9,8 @@ import base64
 import unittest
 
 
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
 from vincul.identity import KeyPair
 from vincul.hashing import domain_hash
 from vincul.transport.envelope import (
@@ -156,14 +158,14 @@ class TestEnvelope(unittest.TestCase):
         )
         self.assertNotEqual(env1.payload_hash, env2.payload_hash)
 
-    def testdomain_hash_deterministic(self):
+    def test_domain_hash_deterministic(self):
         """Same input produces same hash."""
         h1 = domain_hash(ENVELOPE_DOMAIN_TAG, b"test")
         h2 = domain_hash(ENVELOPE_DOMAIN_TAG, b"test")
         self.assertEqual(h1, h2)
         self.assertEqual(len(h1), 64)
 
-    def testdomain_hash_domain_separation(self):
+    def test_domain_hash_domain_separation(self):
         """Different tags produce different hashes for same data."""
         h1 = domain_hash(b"TAG_A\x00", b"test")
         h2 = domain_hash(b"TAG_B\x00", b"test")
@@ -198,10 +200,7 @@ class TestHandshake(unittest.TestCase):
         recovered = b64_to_pubkey(hello.sender_pubkey)
         # Compare raw bytes
         expected = self.alice.public_key_bytes()
-        actual = recovered.public_bytes(
-            encoding=__import__("cryptography.hazmat.primitives.serialization", fromlist=["Encoding"]).Encoding.Raw,
-            format=__import__("cryptography.hazmat.primitives.serialization", fromlist=["PublicFormat"]).PublicFormat.Raw,
-        )
+        actual = recovered.public_bytes(Encoding.Raw, PublicFormat.Raw)
         self.assertEqual(expected, actual)
 
     def test_verify_fails_on_signature_tampering(self):

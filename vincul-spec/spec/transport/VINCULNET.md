@@ -1,5 +1,5 @@
 # VinculNet — Transport Layer Specification
-`spec/transport/VINCULNET.md` · Stage 1
+`spec/transport/VINCULNET.md` · Stage 1 + Stage 2
 
 ---
 
@@ -176,6 +176,47 @@ The `HelloMessage` already uses `"type": "hello"` in its wire format. Stage 2+ w
 - No delivery guarantees
 - TOFU trust model
 - WebSocket transport only
+
+---
+
+## 8. ProtocolPeer (Stage 2)
+
+### 8.1 Overview
+
+A `ProtocolPeer` composes `VinculPeer` (authenticated transport) with `VinculRuntime` (protocol enforcement). Each ProtocolPeer runs a local VinculRuntime for validation and enforcement. The shared-state model requires both peers to be bootstrapped with identical contract and scope state.
+
+### 8.2 Receipt Broadcasting
+
+When a ProtocolPeer commits an action:
+
+1. The action passes through the local 7-step enforcement pipeline
+2. **Success receipts** are broadcast to all connected peers as:
+   ```json
+   {"type": "receipt", "receipt": { ... }}
+   ```
+3. **Failure receipts** stay local (not broadcast)
+
+### 8.3 Receipt Verification on Receive
+
+When a ProtocolPeer receives a receipt from a peer:
+
+1. **Hash verification** — `receipt.verify_hash()` must pass (receipt not tampered in transit)
+2. **Scope hash cross-check** — `receipt.scope_hash` must match the receiver's local `scope.descriptor_hash`
+3. **Contract hash cross-check** — `receipt.contract_hash` must match the receiver's local `contract.descriptor_hash`
+4. **Store** — append to local receipt log (idempotent on duplicate)
+
+If any check fails, the receipt is silently rejected.
+
+### 8.4 Security: Why Cross-Check Hashes?
+
+If a peer tampers with their local scope (e.g., grants themselves COMMIT authority they shouldn't have), the scope's descriptor_hash changes. Their receipt will reference the tampered hash, which won't match what the receiving peer has locally. This is the core security guarantee of the shared-state model: both sides independently verify against their own copy of the truth.
+
+### 8.5 Constraints (Stage 2)
+
+- Peers must be bootstrapped with identical state before connecting
+- No state synchronization protocol (peers don't negotiate state)
+- No conflict resolution (first-writer-wins at the receipt log level)
+- Budget enforcement is local only (no distributed budget coordination)
 
 ---
 `CC0 1.0 Universal — No rights reserved.`
