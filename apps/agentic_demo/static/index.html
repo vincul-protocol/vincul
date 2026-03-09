@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vincul — Agentic Negotiation Demo</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg-card: #1a1d27;
+    --bg-card-hover: #1f2233;
+    --border: #2a2d3a;
+    --border-light: #363a4a;
+    --text: #e4e4e7;
+    --text-dim: #9ca3af;
+    --text-muted: #6b7280;
+    --accent: #818cf8;
+    --accent-dim: #6366f1;
+    --green: #34d399;
+    --green-dim: #065f46;
+    --red: #f87171;
+    --red-dim: #7f1d1d;
+    --yellow: #fbbf24;
+    --yellow-dim: #78350f;
+    --blue: #60a5fa;
+    --blue-dim: #1e3a5f;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+
+    --founder-a: #60a5fa;
+    --founder-b: #34d399;
+    --investor: #fbbf24;
+
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ─────────────────────────────────────── */
+  .header {
+    background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    border-left: 1px solid var(--border);
+    padding-left: 16px;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  select, button {
+    font-family: var(--font);
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    background: var(--bg-card);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  select:hover, button:hover {
+    border-color: var(--border-light);
+    background: var(--bg-card-hover);
+  }
+
+  .btn-run {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    font-weight: 600;
+    padding: 8px 20px;
+  }
+
+  .btn-run:hover { background: var(--accent); color: #fff; }
+
+  .btn-run:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-run:disabled:hover {
+    background: var(--accent-dim);
+  }
+
+  .btn-stop {
+    background: var(--red-dim);
+    border-color: var(--red);
+    font-weight: 600;
+    padding: 8px 20px;
+  }
+  .btn-stop:hover { background: var(--red); color: #fff; }
+
+  /* ── Main Layout ──────────────────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 0;
+    height: calc(100vh - 57px);
+  }
+
+  /* ── Chat Panel ──────────────────────────────────── */
+  .chat-panel {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .chat-header {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .round-badge {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .chat-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+    scroll-behavior: smooth;
+  }
+
+  .chat-feed::-webkit-scrollbar { width: 6px; }
+  .chat-feed::-webkit-scrollbar-track { background: transparent; }
+  .chat-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Chat Messages ──────────────────────────────── */
+  .msg {
+    margin-bottom: 16px;
+    animation: fadeSlideIn 0.3s ease-out;
+  }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .msg-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .msg-avatar.founder-a { background: rgba(96,165,250,0.15); color: var(--founder-a); }
+  .msg-avatar.founder-b { background: rgba(52,211,153,0.15); color: var(--founder-b); }
+  .msg-avatar.investor { background: rgba(251,191,36,0.15); color: var(--investor); }
+  .msg-avatar.system { background: rgba(129,140,248,0.15); color: var(--accent); }
+
+  .msg-name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .msg-name.founder-a { color: var(--founder-a); }
+  .msg-name.founder-b { color: var(--founder-b); }
+  .msg-name.investor { color: var(--investor); }
+  .msg-name.system { color: var(--accent); }
+
+  .msg-time {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .msg-body {
+    margin-left: 36px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  /* ── Event Cards ─────────────────────────────────── */
+  .event-card {
+    margin-left: 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-top: 4px;
+  }
+
+  .event-card.proposal {
+    border-left: 3px solid var(--blue);
+  }
+
+  .event-card.acceptance {
+    border-left: 3px solid var(--green);
+  }
+
+  .event-card.denial {
+    border-left: 3px solid var(--red);
+  }
+
+  .event-card.agreed {
+    border-left: 3px solid var(--green);
+    background: rgba(52,211,153,0.05);
+  }
+
+  .agreed-item {
+    background: rgba(52,211,153,0.08);
+    border: 1px solid rgba(52,211,153,0.2);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    margin-bottom: 6px;
+  }
+
+  .agreed-item-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--green);
+    margin-bottom: 4px;
+  }
+
+  .agreed-item-params {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .event-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .event-label.proposal { color: var(--blue); }
+  .event-label.acceptance { color: var(--green); }
+  .event-label.denial { color: var(--red); }
+
+  .event-category {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .event-params {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    background: rgba(0,0,0,0.2);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    margin: 6px 0;
+    word-break: break-word;
+  }
+
+  .event-rationale {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-top: 4px;
+  }
+
+  .event-receipt {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--green);
+    margin-top: 6px;
+    background: rgba(52,211,153,0.08);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  .event-failure {
+    font-size: 12px;
+    color: var(--red);
+    background: rgba(248,113,113,0.08);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    margin-top: 6px;
+  }
+
+  .event-failure code {
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  /* ── Receipt Toast ──────────────────────────────── */
+  .receipt-toast {
+    margin-left: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(129,140,248,0.08);
+    border: 1px solid rgba(129,140,248,0.2);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  /* ── System Message ─────────────────────────────── */
+  .system-msg {
+    text-align: center;
+    padding: 12px;
+    margin: 12px 0;
+  }
+
+  .system-msg-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+  }
+
+  /* ── Thinking Indicator ──────────────────────────── */
+  .thinking {
+    margin-left: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 8px 0;
+  }
+
+  .thinking-dots span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: bounce 1.4s infinite both;
+  }
+
+  .thinking-dots span:nth-child(2) { animation-delay: 0.16s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.32s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── Right Sidebar ──────────────────────────────── */
+  .sidebar {
+    background: var(--bg-card);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  /* ── Status Cards ───────────────────────────────── */
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 6px 0;
+  }
+
+  .status-label { color: var(--text-dim); }
+  .status-value { font-weight: 600; font-family: var(--font-mono); font-size: 12px; }
+  .status-value.green { color: var(--green); }
+  .status-value.red { color: var(--red); }
+  .status-value.blue { color: var(--blue); }
+  .status-value.yellow { color: var(--yellow); }
+
+  /* ── Agent Cards ────────────────────────────────── */
+  .agent-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  .agent-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .agent-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .agent-dot.founder-a { background: var(--founder-a); }
+  .agent-dot.founder-b { background: var(--founder-b); }
+  .agent-dot.investor { background: var(--investor); }
+
+  .agent-card-name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .agent-card-role {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .agent-card-port {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  .scope-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin: 2px 2px 0 0;
+    background: rgba(129,140,248,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(129,140,248,0.15);
+  }
+
+  .scope-tag.observe { background: rgba(96,165,250,0.1); color: var(--blue); border-color: rgba(96,165,250,0.15); }
+  .scope-tag.propose { background: rgba(251,191,36,0.1); color: var(--yellow); border-color: rgba(251,191,36,0.15); }
+  .scope-tag.commit { background: rgba(52,211,153,0.1); color: var(--green); border-color: rgba(52,211,153,0.15); }
+
+  /* ── Stats Grid ──────────────────────────────────── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    text-align: center;
+  }
+
+  .stat-number {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  /* ── Receipt Log ─────────────────────────────────── */
+  .receipt-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(42,45,58,0.5);
+    color: var(--text-dim);
+  }
+
+  .receipt-arrow { color: var(--accent); font-size: 13px; }
+
+  /* ── Welcome Screen ──────────────────────────────── */
+  .welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+  }
+
+  .welcome-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+  }
+
+  .welcome h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .welcome p {
+    font-size: 14px;
+    max-width: 360px;
+    line-height: 1.6;
+  }
+
+  /* ── Connection Lines ────────────────────────────── */
+  .network-viz {
+    position: relative;
+    height: 80px;
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .net-node {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    position: relative;
+    z-index: 2;
+  }
+
+  .net-node.founder-a { background: rgba(96,165,250,0.2); color: var(--founder-a); border: 2px solid var(--founder-a); }
+  .net-node.founder-b { background: rgba(52,211,153,0.2); color: var(--founder-b); border: 2px solid var(--founder-b); }
+  .net-node.investor { background: rgba(251,191,36,0.2); color: var(--investor); border: 2px solid var(--investor); }
+
+  .net-line {
+    position: absolute;
+    height: 2px;
+    background: var(--border);
+    top: 50%;
+    z-index: 1;
+  }
+
+  .net-line.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(129,140,248,0.3);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* ── Loading bar ─────────────────────────────────── */
+  .loading-bar {
+    height: 2px;
+    background: var(--accent-dim);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .loading-bar::after {
+    content: '';
+    position: absolute;
+    left: -50%;
+    width: 50%;
+    height: 100%;
+    background: var(--accent);
+    animation: loading 1.5s infinite ease-in-out;
+  }
+
+  @keyframes loading {
+    0% { left: -50%; }
+    100% { left: 100%; }
+  }
+
+  .hidden { display: none !important; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo"><span>Vincul</span> Protocol</div>
+    <div class="header-subtitle">Series A Term Sheet — Agentic Negotiation</div>
+  </div>
+  <div class="controls">
+    <select id="modeSelect">
+      <option value="cooperative">Cooperative Mode</option>
+      <option value="rogue">Rogue Investor Mode</option>
+    </select>
+    <select id="roundsSelect">
+      <option value="2">2 Rounds</option>
+      <option value="3" selected>3 Rounds</option>
+      <option value="5">5 Rounds</option>
+    </select>
+    <button class="btn-run" id="runBtn" onclick="startNegotiation()">Run Negotiation</button>
+    <button class="btn-stop" id="stopBtn" onclick="stopNegotiation()" style="display:none">Stop</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Chat Panel -->
+  <div class="chat-panel">
+    <div class="chat-header" id="chatHeader">
+      <span>Negotiation Timeline</span>
+      <span class="round-badge" id="roundBadge">Waiting</span>
+    </div>
+    <div id="loadingBar" class="loading-bar hidden"></div>
+    <div class="chat-feed" id="chatFeed">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">⚖️</div>
+        <h2>Vincul Agentic Demo</h2>
+        <p>Three AI agents negotiate a Series A term sheet under Vincul governance.
+        Each agent operates within bounded authority — proposals that violate scope constraints are cryptographically denied.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <!-- Protocol Status -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Protocol Status</div>
+      <div class="status-row">
+        <span class="status-label">Contract</span>
+        <span class="status-value" id="contractStatus">—</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">VinculNet</span>
+        <span class="status-value" id="netStatus">—</span>
+      </div>
+    </div>
+
+    <!-- Agents -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Agents</div>
+      <div id="agentCards">
+        <div class="agent-card">
+          <div class="agent-card-header">
+            <div class="agent-dot founder-a"></div>
+            <span class="agent-card-name">Founder A (CEO)</span>
+            <span class="agent-card-port">:8801</span>
+          </div>
+          <div class="agent-card-role">Valuation · Equity · Board</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-card-header">
+            <div class="agent-dot founder-b"></div>
+            <span class="agent-card-name">Founder B (CTO)</span>
+            <span class="agent-card-port">:8802</span>
+          </div>
+          <div class="agent-card-role">Vesting · Technical · (observe equity/board)</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-card-header">
+            <div class="agent-dot investor"></div>
+            <span class="agent-card-name">Investor</span>
+            <span class="agent-card-port">:8803</span>
+          </div>
+          <div class="agent-card-role">Valuation · Equity · Liquidation · Board</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VinculNet -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">VinculNet Mesh</div>
+      <div class="network-viz">
+        <div class="net-node founder-a" title="Founder A">FA</div>
+        <div class="net-node founder-b" title="Founder B">FB</div>
+        <div class="net-node investor" title="Investor">IN</div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--text-muted)" id="netLabel">Not connected</div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Live Stats</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number blue" id="statProposals">0</div>
+          <div class="stat-label">Proposals</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number green" id="statAccepted">0</div>
+          <div class="stat-label">Accepted</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number red" id="statDenials">0</div>
+          <div class="stat-label">Denials</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" style="color:var(--accent)" id="statReceipts">0</div>
+          <div class="stat-label">Receipts</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agreed Terms -->
+    <div class="sidebar-section" id="agreedSection" class="hidden">
+      <div class="sidebar-title">Agreed Terms</div>
+      <div id="agreedTerms">
+        <div style="font-size:12px;color:var(--text-muted)">No terms agreed yet</div>
+      </div>
+    </div>
+
+    <!-- Receipt Log -->
+    <div class="sidebar-section" style="flex:1;overflow-y:auto">
+      <div class="sidebar-title">Receipt Log</div>
+      <div id="receiptLog">
+        <div style="font-size:12px;color:var(--text-muted)">No receipts yet</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const chatFeed = document.getElementById('chatFeed');
+const welcome = document.getElementById('welcome');
+const loadingBar = document.getElementById('loadingBar');
+const roundBadge = document.getElementById('roundBadge');
+const runBtn = document.getElementById('runBtn');
+
+let stats = { proposals: 0, accepted: 0, denials: 0, receipts: 0, messages: 0, agreed: 0 };
+let currentRound = 0;
+let receiptCount = 0;
+let agreedCount = 0;
+let evtSource = null;
+const stopBtn = document.getElementById('stopBtn');
+
+function agentClass(agentId) {
+  if (agentId.includes('founder_a')) return 'founder-a';
+  if (agentId.includes('founder_b')) return 'founder-b';
+  if (agentId.includes('investor')) return 'investor';
+  return 'system';
+}
+
+function agentLabel(agentId) {
+  if (agentId.includes('founder_a')) return 'Founder A (CEO)';
+  if (agentId.includes('founder_b')) return 'Founder B (CTO)';
+  if (agentId.includes('investor')) return 'Investor';
+  return agentId;
+}
+
+function agentInitial(agentId) {
+  if (agentId.includes('founder_a')) return 'FA';
+  if (agentId.includes('founder_b')) return 'FB';
+  if (agentId.includes('investor')) return 'IN';
+  return '?';
+}
+
+function principalLabel(pid) {
+  if (pid.includes('founder_a')) return 'Founder A';
+  if (pid.includes('founder_b')) return 'Founder B';
+  if (pid.includes('investor')) return 'Investor';
+  return pid;
+}
+
+function updateStats() {
+  document.getElementById('statProposals').textContent = stats.proposals;
+  document.getElementById('statAccepted').textContent = stats.accepted;
+  document.getElementById('statDenials').textContent = stats.denials;
+  document.getElementById('statReceipts').textContent = stats.receipts;
+}
+
+function addSystemMsg(text) {
+  const div = document.createElement('div');
+  div.className = 'system-msg';
+  div.innerHTML = `<span class="system-msg-text">${text}</span>`;
+  chatFeed.appendChild(div);
+  chatFeed.scrollTop = chatFeed.scrollHeight;
+}
+
+function addMessage(agentId, text) {
+  const cls = agentClass(agentId);
+  const div = document.createElement('div');
+  div.className = 'msg';
+  div.innerHTML = `
+    <div class="msg-header">
+      <div class="msg-avatar ${cls}">${agentInitial(agentId)}</div>
+      <span class="msg-name ${cls}">${agentLabel(agentId)}</span>
+      <span class="msg-time">${new Date().toLocaleTimeString()}</span>
+    </div>
+    <div class="msg-body">${escapeHtml(text)}</div>
+  `;
+  chatFeed.appendChild(div);
+  chatFeed.scrollTop = chatFeed.scrollHeight;
+}
+
+function addEventCard(data) {
+  const cls = agentClass(data.agent_id);
+  const div = document.createElement('div');
+  div.className = 'msg';
+
+  let cardType, icon, label;
+  if (data.event_type === 'proposal') {
+    cardType = 'proposal'; icon = '📋'; label = 'PROPOSAL';
+    stats.proposals++;
+  } else if (data.event_type === 'acceptance') {
+    cardType = 'acceptance'; icon = '✅'; label = 'ACCEPTED';
+    stats.accepted++;
+  } else if (data.event_type === 'denial') {
+    cardType = 'denial'; icon = '🚫'; label = 'DENIED';
+    stats.denials++;
+  }
+
+  let paramsHtml = data.params ? `<div class="event-params">${JSON.stringify(data.params, null, 2)}</div>` : '';
+  let rationaleHtml = data.rationale ? `<div class="event-rationale">"${escapeHtml(data.rationale)}"</div>` : '';
+  let receiptHtml = data.receipt_hash ? `<div class="event-receipt">🔗 ${data.receipt_hash}…</div>` : '';
+  let failureHtml = '';
+  if (data.failure_code) {
+    failureHtml = `<div class="event-failure"><code>${data.failure_code}</code> — ${escapeHtml(data.failure_message || '')}</div>`;
+  }
+
+  div.innerHTML = `
+    <div class="msg-header">
+      <div class="msg-avatar ${cls}">${agentInitial(data.agent_id)}</div>
+      <span class="msg-name ${cls}">${agentLabel(data.agent_id)}</span>
+      <span class="msg-time">${new Date().toLocaleTimeString()}</span>
+    </div>
+    <div class="event-card ${cardType}">
+      <div class="event-label ${cardType}">${icon} ${label}</div>
+      <div class="event-category">${capitalize(data.category || '')}</div>
+      ${paramsHtml}
+      ${rationaleHtml}
+      ${receiptHtml}
+      ${failureHtml}
+    </div>
+  `;
+  chatFeed.appendChild(div);
+  chatFeed.scrollTop = chatFeed.scrollHeight;
+  updateStats();
+}
+
+function addAgreedCard(data) {
+  const div = document.createElement('div');
+  div.className = 'msg';
+  div.innerHTML = `
+    <div class="msg-header">
+      <div class="msg-avatar system">🤝</div>
+      <span class="msg-name system">Agreement Reached</span>
+      <span class="msg-time">${new Date().toLocaleTimeString()}</span>
+    </div>
+    <div class="event-card agreed">
+      <div class="event-label acceptance">🔒 AGREED — ${capitalize(data.category || '')}</div>
+      <div class="event-category">All parties committed to the same terms</div>
+      <div class="event-params">${JSON.stringify(data.params, null, 2)}</div>
+      <div style="font-size:12px;color:var(--green);margin-top:6px">This category is now locked. No further changes allowed.</div>
+    </div>
+  `;
+  chatFeed.appendChild(div);
+  chatFeed.scrollTop = chatFeed.scrollHeight;
+
+  // Update sidebar
+  agreedCount++;
+  const agreedTerms = document.getElementById('agreedTerms');
+  if (agreedCount === 1) agreedTerms.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'agreed-item';
+  item.innerHTML = `
+    <div class="agreed-item-header">🔒 ${capitalize(data.category || '')}</div>
+    <div class="agreed-item-params">${JSON.stringify(data.params, null, 2)}</div>
+  `;
+  agreedTerms.appendChild(item);
+}
+
+function addReceiptExchange(data) {
+  stats.receipts++;
+  receiptCount++;
+  updateStats();
+
+  const log = document.getElementById('receiptLog');
+  if (receiptCount === 1) log.innerHTML = '';
+
+  const item = document.createElement('div');
+  item.className = 'receipt-item';
+  item.innerHTML = `
+    <span>${principalLabel(data.sender)}</span>
+    <span class="receipt-arrow">→</span>
+    <span>${principalLabel(data.receiver)}</span>
+    <span style="margin-left:auto;color:var(--green)">${data.hash.substring(0,12)}…</span>
+  `;
+  log.appendChild(item);
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function startNegotiation() {
+  const mode = document.getElementById('modeSelect').value;
+  const rounds = document.getElementById('roundsSelect').value;
+
+  // Reset UI
+  chatFeed.innerHTML = '';
+  welcome.classList.add('hidden');
+  loadingBar.classList.remove('hidden');
+  runBtn.disabled = true;
+  stopBtn.style.display = '';
+  stats = { proposals: 0, accepted: 0, denials: 0, receipts: 0, messages: 0 };
+  receiptCount = 0;
+  currentRound = 0;
+  updateStats();
+  document.getElementById('receiptLog').innerHTML = '<div style="font-size:12px;color:var(--text-muted)">Waiting for receipts…</div>';
+  document.getElementById('contractStatus').textContent = '…';
+  document.getElementById('contractStatus').className = 'status-value';
+  document.getElementById('netStatus').textContent = '…';
+  document.getElementById('netLabel').textContent = 'Connecting…';
+
+  roundBadge.textContent = 'Setting up';
+
+  if (mode === 'rogue') {
+    addSystemMsg('⚠️ <strong>Rogue Mode</strong> — Investor agent will attempt to exceed its authority');
+  } else {
+    addSystemMsg('🤝 <strong>Cooperative Mode</strong> — All agents negotiate within bounds');
+  }
+
+  evtSource = new EventSource(`/api/run?mode=${mode}&rounds=${rounds}`);
+
+  evtSource.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+
+    switch(data.type) {
+      case 'setup_start':
+        addSystemMsg('🔧 Initializing Vincul governance and VinculNet…');
+        break;
+
+      case 'setup_complete':
+        document.getElementById('contractStatus').textContent = data.contract_status;
+        document.getElementById('contractStatus').className = 'status-value green';
+        document.getElementById('netStatus').textContent = `${data.peers.length} peers`;
+        document.getElementById('netStatus').className = 'status-value green';
+        document.getElementById('netLabel').textContent = `Full mesh — ${data.peers.length} authenticated peers`;
+        addSystemMsg(`✅ Setup complete — Contract <code>${data.contract_id.substring(0,12)}…</code> active, ${data.peers.length} VinculNet peers connected`);
+        roundBadge.textContent = 'Ready';
+        loadingBar.classList.add('hidden');
+        break;
+
+      case 'negotiation_event':
+        if (data.event_type === 'agreed') {
+          addAgreedCard(data);
+        } else if (data.event_type === 'deal_closed') {
+          addSystemMsg('🎉 <strong>Deal Closed!</strong> ' + escapeHtml(data.message));
+        } else if (data.event_type === 'message') {
+          addMessage(data.agent_id, data.message);
+          stats.messages++;
+        } else {
+          addEventCard(data);
+        }
+        break;
+
+      case 'receipt_exchange':
+        addReceiptExchange(data);
+        break;
+
+      case 'complete':
+        loadingBar.classList.add('hidden');
+        roundBadge.textContent = 'Complete';
+        runBtn.disabled = false;
+        stopBtn.style.display = 'none';
+        const s = data.summary;
+        addSystemMsg(
+          `🏁 <strong>Negotiation Complete</strong> — ` +
+          `${s.proposals} proposals, ${s.acceptances} accepted, ` +
+          `${s.denials} denied by Vincul, ${s.receipts_exchanged} receipts exchanged`
+        );
+        evtSource.close();
+        break;
+
+      case 'error':
+        loadingBar.classList.add('hidden');
+        runBtn.disabled = false;
+        stopBtn.style.display = 'none';
+        addSystemMsg(`❌ Error: ${escapeHtml(data.message)}`);
+        evtSource.close();
+        break;
+    }
+  };
+
+  evtSource.onerror = function() {
+    loadingBar.classList.add('hidden');
+    runBtn.disabled = false;
+    stopBtn.style.display = 'none';
+    evtSource.close();
+    evtSource = null;
+  };
+}
+
+function stopNegotiation() {
+  if (evtSource) {
+    evtSource.close();
+    evtSource = null;
+  }
+  loadingBar.classList.add('hidden');
+  runBtn.disabled = false;
+  stopBtn.style.display = 'none';
+  roundBadge.textContent = 'Stopped';
+  addSystemMsg('🛑 <strong>Negotiation stopped</strong> by user');
+}
+</script>
+</body>
+</html>

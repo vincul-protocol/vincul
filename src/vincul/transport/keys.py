@@ -10,6 +10,7 @@ Ensures stable identity across restarts.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 from pathlib import Path
 
@@ -21,6 +22,8 @@ from cryptography.hazmat.primitives.serialization import (
 )
 
 from vincul.identity import KeyPair
+
+logger = logging.getLogger("vincul.transport.keys")
 
 
 DEFAULT_KEY_DIR = Path.home() / ".vincul" / "keys"
@@ -40,7 +43,7 @@ def load_or_create_keypair(
     Load an existing keypair or generate a new one.
 
     Path: {key_dir}/{principal_id}.key (PEM, PKCS8, unencrypted)
-    If generated, prints the fingerprint to stdout.
+    If generated, logs the fingerprint.
     """
     key_dir = key_dir or DEFAULT_KEY_DIR
     key_dir.mkdir(parents=True, exist_ok=True)
@@ -74,8 +77,8 @@ def load_or_create_keypair(
     os.chmod(key_path, 0o600)
 
     fingerprint = _fingerprint(keypair)
-    print(f"[VinculNet] Generated new keypair for {principal_id}")
-    print(f"[VinculNet] Fingerprint: {fingerprint}")
-    print(f"[VinculNet] Saved to: {key_path}")
+    logger.info(f"Generated new keypair for {principal_id}")
+    logger.info(f"Fingerprint: {fingerprint}")
+    logger.info(f"Saved to: {key_path}")
 
     return keypair
