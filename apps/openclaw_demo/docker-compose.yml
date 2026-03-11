@@ -1,0 +1,72 @@
+services:
+  # ── LLM API proxy ──────────────────────────────────────────
+  # The ONLY container with internet access.
+  # Forwards TCP on port 443 to api.anthropic.com:443.
+  # The demo container reaches the LLM API through this proxy
+  # and has no other outbound connectivity.
+  llm-proxy:
+    image: alpine/socat:latest
+    networks:
+      - internal        # shared with demo container
+      - egress          # has internet access
+    command: >-
+      TCP-LISTEN:443,fork,reuseaddr
+      TCP:api.anthropic.com:443
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: "0.25"
+
+  # ── Demo container ─────────────────────────────────────────
+  # Runs OpenClaw gateway + Vincul enforcement service.
+  # On 'internal' network (no direct internet — LLM goes via llm-proxy).
+  # On 'hostports' network (allows port forwarding to localhost).
+  # Does NOT have access to 'egress' network (no direct internet).
+  demo:
+    build:
+      context: ../..
+      dockerfile: apps/openclaw_demo/Dockerfile
+    ports:
+      - "127.0.0.1:18789:18789"   # OpenClaw WebChat (localhost only)
+      - "127.0.0.1:8100:8100"     # Vincul enforcement (localhost only)
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY:?Set LLM_API_KEY to your API key}
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - LLM_MODEL=${LLM_MODEL:-claude-haiku-4-5-20251001}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      # Anthropic SDK env var (OpenClaw reads this directly)
+      - ANTHROPIC_API_KEY=${LLM_API_KEY}
+      # Route Anthropic API through the proxy container
+      - ANTHROPIC_BASE_URL=https://llm-proxy:443
+      # Disable TLS verification for proxy (traffic stays on internal Docker network)
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    networks:
+      - internal        # reaches llm-proxy (no internet)
+      - hostports       # allows port forwarding to host
+    depends_on:
+      - llm-proxy
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /root/.openclaw         # OpenClaw config + runtime state
+      - /root/.npm              # npm cache
+      - /root/.cache            # Python/general cache
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "2.0"
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+    internal: true    # No outbound internet — demo + llm-proxy only
+
+  egress:
+    driver: bridge    # Normal bridge with internet — llm-proxy only
+
+  hostports:
+    driver: bridge    # Non-internal — enables port forwarding to host

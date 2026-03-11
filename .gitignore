@@ -24,6 +24,10 @@ Thumbs.db
 *.swp
 *.swo
 
+# Secrets
+**/claude_key.txt
+**/*_key.txt
+
 # Claude Code
 .claude/
 CLAUDE.md
