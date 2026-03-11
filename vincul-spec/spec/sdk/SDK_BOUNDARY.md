@@ -143,8 +143,8 @@ Third-party SDKs are **not required** to:
 - Implement `vincul.sdk` decorators or the `VinculContext` convenience layer
 - Use in-memory stores (implementations may use databases, event stores, etc.)
 - Match the reference implementation's method signatures
-- Use the demo application (`apps/`) or sample (`samples/`) patterns
-- Implement the `connectors/` interfaces
+- Use the demo application (`apps/`) patterns
+- Replicate the reference demo connectors or tool implementations
 
 ### 4.4 What IS Required
 

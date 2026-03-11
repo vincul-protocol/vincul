@@ -37,7 +37,7 @@ src/vincul/                        Core protocol library (11 modules)
 ├── contract.py                  CoalitionContract, ContractStore, governance
 ├── scopes.py                    Scope DAG, DelegationValidator, revocation cascade
 ├── constraints.py               Constraint DSL parser/evaluator
-├── receipts.py                  Receipt dataclass, 5 builders, ReceiptLog
+├── receipts.py                  Receipt dataclass, 8 builders, ReceiptLog
 ├── budget.py                    BudgetLedger — Decimal arithmetic, per-scope ceilings
 │
 ├── validator.py                 7-step enforcement pipeline (imports only interfaces)
@@ -53,24 +53,36 @@ src/vincul/                        Core protocol library (11 modules)
 └── sdk/                         High-level SDK for building agents & tools
     ├── context.py               VinculContext — one-stop coalition setup
     ├── decorators.py            @vincul_tool, @vincul_tool_action, ToolResult
-    └── agent.py                 @vincul_agent, @vincul_agent_action
+    ├── agent.py                 @vincul_agent, @vincul_agent_action
+    └── enforce.py               @vincul_enforce for LLM agent tools
 
-tests/                           467 unit tests across 10 files
+tests/                           659 unit tests across 10+ files
 ci/check_vectors.py              13-vector CI gate (hash correctness)
+scripts/verify.sh                Full verification suite (tests + demos)
 
 vincul-spec/                       Protocol specification
 ├── PHILOSOPHY.md                Protocol constitution
 ├── GLOSSARY.md                  Canonical vocabulary
-└── spec/                        12 normative spec documents
-
-connectors/                      Stub connectors for demo (flights, hotels)
+└── spec/                        16 normative spec documents
 
 apps/
-├── server/                      FastAPI backend — demo state, routes, WebSocket
+├── trip_planner/                8-friends-trip demo (CLI + API)
+│   ├── state.py                 DemoState singleton, SDK-decorated tools
+│   ├── routes.py                FastAPI endpoints (contract, actions, votes)
+│   ├── demo.py                  CLI demo (python -m apps.trip_planner.demo)
+│   └── connectors.py            Stub connectors (flights, hotels)
+│
+├── tool_marketplace/            Cross-vendor tool marketplace demo
+│   ├── state.py                 MarketplaceState singleton
+│   ├── routes.py                FastAPI endpoints (setup, invoke, revoke)
+│   └── demo.py                  CLI demo (python -m apps.tool_marketplace.demo)
+│
+├── agentic_demo/                LLM agent demo (@vincul_enforce + Strands)
+│
+├── server/                      Shared FastAPI infrastructure
 │   ├── main.py                  App entry point, static file serving
-│   ├── demo_state.py            8-friends-trip scenario fixtures
 │   ├── websocket.py             ConnectionManager, real-time broadcast
-│   └── routes/                  REST endpoints (contract, actions, votes, demo)
+│   └── broadcast.py             Receipt-to-event serialization
 │
 └── web/                         React + TypeScript + Tailwind frontend (Vite)
     └── src/
@@ -131,22 +143,6 @@ pip install -e .
 
 This installs the `vincul` package with its only dependency (`cryptography`).
 
-### With samples
-
-Install the core library plus sample agents and tools:
-
-```bash
-git clone https://github.com/vincul-protocol/vincul.git && cd vincul
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[samples]"
-```
-
-Run the cross-vendor tool marketplace demo:
-
-```bash
-python -m samples.cross_vendor_tool_marketplace.demo
-```
-
 ### With demo server
 
 To run the interactive demo, install with the `server` extra and build the frontend:
@@ -163,15 +159,17 @@ cd apps/web && npm install && npm run build && cd ../..
 ### All extras
 
 ```bash
-pip install -e ".[samples,server,dev]"
+pip install -e ".[server,dev]"
 ```
 
 ### Verify installation
 
 ```bash
 source .venv/bin/activate
-python3 -m unittest discover -s tests -p "test_*.py"    # 425 tests
+python3 -m pytest tests/ -x -q                           # 659 tests
 python3 ci/check_vectors.py                              # 13 vectors
+python -m apps.trip_planner.demo                          # Trip planner CLI demo
+python -m apps.tool_marketplace.demo                      # Marketplace CLI demo
 ```
 
 ---
@@ -232,18 +230,41 @@ conda activate demo
 cd apps/web && npm run dev                               # Vite dev server on :8199
 ```
 
+### CLI Demos
+
+```bash
+# 8-friends trip planner (full scenario: setup, actions, votes, dissolution)
+python -m apps.trip_planner.demo
+
+# Cross-vendor tool marketplace (SDK mode)
+python -m apps.tool_marketplace.demo
+
+# Cross-vendor tool marketplace (VinculNet P2P mode)
+python -m apps.tool_marketplace.demo --vinculnet
+```
+
 ### API Endpoints
 
 ```
-POST /contract/setup          Initialize the 8-friends-trip scenario
-POST /contract/dissolve       Dissolve contract + cascade revocation
-POST /action                  Execute action through enforcement pipeline
-POST /vote/open               Open a governance vote
-POST /vote/cast               Cast vote (auto-resolves at threshold)
-POST /demo/reset              Reset to clean state
-GET  /demo/status             Current state summary
-GET  /demo/state              Enriched state (principals, scopes, governance, budget)
-WS   /ws                      Real-time event broadcast
+Trip Planner:
+  POST /contract/setup          Initialize the 8-friends-trip scenario
+  POST /contract/dissolve       Dissolve contract + cascade revocation
+  POST /action                  Execute action through enforcement pipeline
+  POST /vote/open               Open a governance vote
+  POST /vote/cast               Cast vote (auto-resolves at threshold)
+  POST /demo/reset              Reset to clean state
+  GET  /demo/status             Current state summary
+  GET  /demo/state              Enriched state (principals, scopes, governance, budget)
+
+Marketplace:
+  POST /marketplace/setup       Register vendors + tool provider
+  POST /marketplace/contract    Create coalition contract
+  POST /marketplace/scope       Build scope DAG
+  POST /marketplace/invoke      Invoke tool through agent
+  POST /marketplace/revoke      Revoke scope with cascade
+  GET  /marketplace/audit       Full receipt timeline
+
+WS   /ws                        Real-time event broadcast
 ```
 
 ---
@@ -273,17 +294,18 @@ The full protocol specification lives in [`vincul-spec/`](vincul-spec/spec/READM
 ## Testing
 
 ```bash
-# Full test suite (425 tests)
-python3 -m unittest discover -s tests -p "test_*.py"
+# Full test suite (659 tests)
+python3 -m pytest tests/ -x -q
 
 # Single module
-python3 -m unittest tests.test_validator
+python3 -m pytest tests/test_validator.py
 
 # CI gate — hash correctness (must always pass)
 python3 ci/check_vectors.py
-```
 
-All tests use `unittest`. Each test file is self-contained — no shared fixtures or conftest.
+# Full verification (tests + CI vectors + all demos)
+bash scripts/verify.sh
+```
 
 ---
 
