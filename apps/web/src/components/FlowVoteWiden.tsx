@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import type { ActionResult, VoteSessionResult } from '../api/types';
-import { YAKI_ACCOMMODATION_ID } from '../api/types';
 import FlowRunner from './FlowRunner';
 
 interface Props {
   disabled: boolean;
+  scopeId: string;
   onComplete: () => void;
 }
 
@@ -13,7 +13,7 @@ const VOTERS = ['principal:alice', 'principal:bob', 'principal:carol', 'principa
 
 type Step = 'idle' | 'voting' | 'voted' | 'rebooking' | 'done';
 
-export default function FlowVoteWiden({ disabled, onComplete }: Props) {
+export default function FlowVoteWiden({ disabled, scopeId, onComplete }: Props) {
   const [step, setStep] = useState<Step>('idle');
   const [voteSession, setVoteSession] = useState<VoteSessionResult | null>(null);
   const [votesCompleted, setVotesCompleted] = useState(0);
@@ -23,7 +23,7 @@ export default function FlowVoteWiden({ disabled, onComplete }: Props) {
     // Step 1: Open vote
     setStep('voting');
     const session = await api.openVote({
-      scope_id: YAKI_ACCOMMODATION_ID,
+      scope_id: scopeId,
       request: 'Widen Yaki accommodation scope to include COMMIT',
       requested_types: ['OBSERVE', 'PROPOSE', 'COMMIT'],
       requested_ceiling: 'action.params.cost <= 1500',

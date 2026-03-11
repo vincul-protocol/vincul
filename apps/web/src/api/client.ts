@@ -4,6 +4,12 @@ import type {
   DemoFullState,
   DemoStatus,
   DissolveResult,
+  MarketplaceAuditResult,
+  MarketplaceContractResult,
+  MarketplaceInvokeResult,
+  MarketplaceRevokeResult,
+  MarketplaceScopeResult,
+  MarketplaceSetupResult,
   OpenVoteRequest,
   SetupResult,
   VoteSessionResult,
@@ -59,4 +65,26 @@ export const api = {
 
   getState: () =>
     request<DemoFullState>('GET', '/demo/state'),
+
+  // Marketplace endpoints
+  marketplaceSetup: () =>
+    request<MarketplaceSetupResult>('POST', '/marketplace/setup'),
+
+  marketplaceContract: () =>
+    request<MarketplaceContractResult>('POST', '/marketplace/contract'),
+
+  marketplaceScope: () =>
+    request<MarketplaceScopeResult>('POST', '/marketplace/scope'),
+
+  marketplaceInvoke: (item_id: string, quantity: number, shipping_zip = '10001') =>
+    request<MarketplaceInvokeResult>('POST', '/marketplace/invoke', { item_id, quantity, shipping_zip }),
+
+  marketplaceRevoke: () =>
+    request<MarketplaceRevokeResult>('POST', '/marketplace/revoke'),
+
+  marketplaceAudit: () =>
+    request<MarketplaceAuditResult>('GET', '/marketplace/audit'),
+
+  marketplaceReset: () =>
+    request<{ status: string }>('POST', '/marketplace/reset'),
 };

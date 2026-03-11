@@ -1,21 +1,21 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import type { ActionResult } from '../api/types';
-import { RAANAN_FLIGHTS_ID } from '../api/types';
 import FlowRunner from './FlowRunner';
 
 interface Props {
   disabled: boolean;
+  scopeId: string;
   onComplete: () => void;
 }
 
-export default function FlowRaananBook({ disabled, onComplete }: Props) {
+export default function FlowRaananBook({ disabled, scopeId, onComplete }: Props) {
   const [result, setResult] = useState<ActionResult | null>(null);
 
   const run = async () => {
     const r = await api.performAction({
       principal: 'principal:raanan',
-      scope_id: RAANAN_FLIGHTS_ID,
+      scope_id: scopeId,
       action: {
         type: 'COMMIT',
         namespace: 'travel.flights',

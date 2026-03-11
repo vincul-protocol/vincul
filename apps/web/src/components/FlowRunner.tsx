@@ -16,6 +16,9 @@ const assertionColors: Record<string, string> = {
   'Scope Enforcement': 'bg-red-900/50 text-red-300 border-red-800',
   'Real Revocation': 'bg-amber-900/50 text-amber-300 border-amber-800',
   'Verifiable Receipts': 'bg-green-900/50 text-green-300 border-green-800',
+  'Cross-Vendor Identity': 'bg-cyan-900/50 text-cyan-300 border-cyan-800',
+  'Contract Integrity': 'bg-blue-900/50 text-blue-300 border-blue-800',
+  'Tool Attestation': 'bg-emerald-900/50 text-emerald-300 border-emerald-800',
 };
 
 export default function FlowRunner({

@@ -1,15 +1,26 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import type { ActionResult, DissolveResult } from '../api/types';
-import { PRINCIPALS, RAANAN_FLIGHTS_ID } from '../api/types';
 import FlowRunner from './FlowRunner';
+
+const PRINCIPALS = [
+  'principal:raanan',
+  'principal:yaki',
+  'principal:coordinator',
+  'principal:alice',
+  'principal:bob',
+  'principal:carol',
+  'principal:dan',
+  'principal:eve',
+];
 
 interface Props {
   disabled: boolean;
+  scopeId: string;
   onComplete: () => void;
 }
 
-export default function FlowDissolve({ disabled, onComplete }: Props) {
+export default function FlowDissolve({ disabled, scopeId, onComplete }: Props) {
   const [result, setResult] = useState<DissolveResult | null>(null);
   const [postAction, setPostAction] = useState<ActionResult | null>(null);
 
@@ -25,7 +36,7 @@ export default function FlowDissolve({ disabled, onComplete }: Props) {
     try {
       const action = await api.performAction({
         principal: 'principal:raanan',
-        scope_id: RAANAN_FLIGHTS_ID,
+        scope_id: scopeId,
         action: {
           type: 'COMMIT',
           namespace: 'travel.flights',

@@ -22,6 +22,7 @@ Start with PHILOSOPHY.md and GLOSSARY.md at the repo root, then:
 10. `spec/budget/LEDGER.md` — budget ledger, snapshots (v0.2)
 11. `spec/implementation/COMPLIANCE_PROFILES.md` — declared bounds, interoperability
 12. `spec/implementation/GOTCHAS.md` — known footguns, resolved gaps
+13. `spec/sdk/SDK_BOUNDARY.md` — SDK center of gravity, normative vs reference, golden flows
 
 ---
 
@@ -52,6 +53,8 @@ spec/
     GOTCHAS.md                  Implementation footguns; resolved gap history
   transport/
     VINCULNET.md                VinculNet Stage 1: envelope, handshake, peer registry
+  sdk/
+    SDK_BOUNDARY.md             SDK boundary: normative interop, pluggable transport, golden flows
 ```
 
 ---

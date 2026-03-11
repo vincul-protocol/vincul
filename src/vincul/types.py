@@ -101,6 +101,7 @@ class ReceiptKind(str, Enum):
     REVERT_ATTEMPT      = "revert_attempt"
     FAILURE             = "failure"
     ATTESTATION         = "attestation"
+    CONTRACT_ACTIVATION  = "contract_activation"
     CONTRACT_DISSOLUTION = "contract_dissolution"
     LEDGER_SNAPSHOT     = "ledger_snapshot"
 

@@ -7,7 +7,8 @@ export function useWebSocket(onEvent: (event: WsEvent) => void) {
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
 
-  const connect = useCallback(() => {
+  const connect = useCallback((aborted: { current: boolean }) => {
+    if (aborted.current) return;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = `${protocol}//${window.location.host}/ws`;
     const ws = new WebSocket(url);
@@ -22,7 +23,9 @@ export function useWebSocket(onEvent: (event: WsEvent) => void) {
     };
 
     ws.onclose = () => {
-      reconnectTimer.current = window.setTimeout(connect, 2000);
+      if (!aborted.current) {
+        reconnectTimer.current = window.setTimeout(() => connect(aborted), 2000);
+      }
     };
 
     ws.onerror = () => {
@@ -33,8 +36,10 @@ export function useWebSocket(onEvent: (event: WsEvent) => void) {
   }, []);
 
   useEffect(() => {
-    connect();
+    const aborted = { current: false };
+    connect(aborted);
     return () => {
+      aborted.current = true;
       clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
     };

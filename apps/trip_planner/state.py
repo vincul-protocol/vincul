@@ -1,8 +1,8 @@
 """
-apps.server.demo_state — DemoState singleton
+apps.trip_planner.state — DemoState singleton (SDK-driven)
 
-Wires VinculRuntime + fixture data for the 8-friends-trip scenario.
-Deterministic: every reset() produces identical state.
+Uses VinculContext + @vincul_tool / @vincul_tool_action for the
+8-friends-trip scenario.
 """
 
 from __future__ import annotations
@@ -11,17 +11,17 @@ import uuid as uuid_mod
 from dataclasses import dataclass, field
 from typing import Any
 
-from vincul.contract import CoalitionContract
-from vincul.receipts import Receipt
+from vincul.identity import KeyPair
+from vincul.receipts import Receipt, now_utc
 from vincul.runtime import VinculRuntime
 from vincul.scopes import Scope
-from vincul.types import Domain, OperationType, ReceiptKind
+from vincul.sdk import VinculContext, vincul_tool, vincul_tool_action, ToolResult
+from vincul.types import Domain, OperationType
 
-from connectors.flights import FlightsConnector
-from connectors.hotels import HotelsConnector
+from .connectors import FlightsConnector, HotelsConnector
 
 
-# ── Stable identifiers ───────────────────────────────────────
+# ── Stable principal identifiers ─────────────────────────────
 
 PRINCIPALS = [
     "principal:raanan",
@@ -34,13 +34,43 @@ PRINCIPALS = [
     "principal:eve",
 ]
 
-CONTRACT_ID = "c0000000-0000-0000-0000-000000000001"
-ROOT_SCOPE_ID = "s0000000-0000-0000-0000-000000000001"
-RAANAN_FLIGHTS_ID = "s0000000-0000-0000-0000-000000000002"
-YAKI_ACCOMMODATION_ID = "s0000000-0000-0000-0000-000000000003"
-
-ACTIVATED_AT = "2026-01-01T00:00:00Z"
 EXPIRES_AT = "2027-12-31T23:59:59Z"
+
+
+# ── SDK Tool definitions ─────────────────────────────────────
+
+@vincul_tool(namespace="travel.flights", tool_id="tool:trip:flights", tool_version="1.0.0")
+class FlightsTool:
+    def __init__(self, key_pair: KeyPair, runtime: VinculRuntime):
+        self.key_pair = key_pair
+        self.runtime = runtime
+        self.connector = FlightsConnector()
+
+    @vincul_tool_action(action_type=OperationType.COMMIT, resource_key="resource")
+    def book(self, *, resource: str, cost: int) -> dict:
+        result = self.connector.book(resource, {"cost": cost})
+        return {
+            "external_ref": result.external_ref,
+            "reversible": result.reversible,
+            "revert_window": result.revert_window,
+        }
+
+
+@vincul_tool(namespace="travel.accommodation", tool_id="tool:trip:hotels", tool_version="1.0.0")
+class HotelsTool:
+    def __init__(self, key_pair: KeyPair, runtime: VinculRuntime):
+        self.key_pair = key_pair
+        self.runtime = runtime
+        self.connector = HotelsConnector()
+
+    @vincul_tool_action(action_type=OperationType.COMMIT, resource_key="resource")
+    def book(self, *, resource: str, cost: int) -> dict:
+        result = self.connector.book(resource, {"cost": cost})
+        return {
+            "external_ref": result.external_ref,
+            "reversible": result.reversible,
+            "revert_window": result.revert_window,
+        }
 
 
 # ── VoteSession (in-demo only) ───────────────────────────────
@@ -63,23 +93,24 @@ class VoteSession:
 
 class DemoState:
     """
-    Singleton demo state. Wraps VinculRuntime + connectors + votes.
+    Singleton demo state using VinculContext + SDK tool decorators.
 
-    Call setup_contract() after construction to initialize the
-    8-friends-trip scenario.
+    Call setup_contract() to initialize the 8-friends-trip scenario.
     """
 
     def __init__(self) -> None:
-        self.runtime = VinculRuntime()
-        self.connectors = {
-            "flights": FlightsConnector(),
-            "hotels": HotelsConnector(),
-        }
+        self.ctx: VinculContext | None = None
+        self.contract = None
+        self.root_scope: Scope | None = None
+        self.flights_scope: Scope | None = None
+        self.accommodation_scope: Scope | None = None
+        self.flights_tool: FlightsTool | None = None
+        self.hotels_tool: HotelsTool | None = None
         self.votes: dict[str, VoteSession] = {}
         self._setup_complete = False
 
     def reset(self) -> dict:
-        """Re-initialize everything. Deterministic."""
+        """Re-initialize everything."""
         self.__init__()
         return {"status": "reset"}
 
@@ -91,57 +122,38 @@ class DemoState:
 
     def setup_contract(self) -> dict:
         """
-        Create the 8-friends-trip contract, activate it, and set up
+        Create the 8-friends-trip contract via SDK, activate it, and set up
         the root scope + two delegated scopes.
-
-        Returns a summary dict.
         """
         if self._setup_complete:
-            return {"status": "already_setup", "contract_id": CONTRACT_ID}
+            return self._setup_response("already_setup")
 
-        # 1. Register draft contract
-        contract = CoalitionContract(
-            contract_id=CONTRACT_ID,
-            version="0.2",
-            purpose={
-                "title": "Group Trip to Italy",
-                "description": "8 friends coordinating flights and accommodation in Italy",
-                "expires_at": EXPIRES_AT,
-            },
-            principals=[
-                {"principal_id": p, "role": "member"} for p in PRINCIPALS
-            ],
+        # 1. Create context and register principals
+        self.ctx = VinculContext()
+        for p in PRINCIPALS:
+            self.ctx.add_principal(p, role="member", permissions=["delegate", "commit"])
+
+        # 2. Create and activate contract via SDK
+        self.contract = self.ctx.create_contract(
+            purpose_title="Group Trip to Italy",
+            purpose_description="8 friends coordinating flights and accommodation in Italy",
+            expires_at=EXPIRES_AT,
             governance={
                 "decision_rule": "threshold",
                 "threshold": 5,
                 "amendment_rule": "threshold",
                 "amendment_threshold": 6,
             },
-            budget_policy={
-                "allowed": True,
-                "dimensions": [
-                    {"name": "EUR", "unit": "EUR", "ceiling": "3000.00"},
-                ],
-            },
-            activation={
-                "status": "draft",
-                "activated_at": None,
-                "dissolved_at": None,
-            },
-        )
-        self.runtime.register_contract(contract)
-
-        # 2. Activate with all 8 signatures
-        self.runtime.activate_contract(
-            CONTRACT_ID, ACTIVATED_AT, PRINCIPALS,
+            budget_allowed=True,
+            budget_dimensions=[{"name": "EUR", "unit": "EUR", "ceiling": "3000.00"}],
         )
 
         # 3. Root scope — travel, full types, TOP/TOP, delegate=True
-        root_scope = Scope(
-            id=ROOT_SCOPE_ID,
+        self.root_scope = Scope(
+            id=str(uuid_mod.uuid4()),
             issued_by_scope_id=None,
-            issued_by=CONTRACT_ID,
-            issued_at=ACTIVATED_AT,
+            issued_by=self.contract.contract_id,
+            issued_at=now_utc(),
             expires_at=EXPIRES_AT,
             domain=Domain(
                 namespace="travel",
@@ -152,64 +164,81 @@ class DemoState:
             delegate=True,
             revoke="coalition_if_granted",
         )
-        self.runtime.scopes.add(root_scope)
+        self.root_scope = self.ctx.add_scope(self.root_scope)
 
-        # 4. Raanan's flights scope — travel.flights, all types, ceiling ≤ 1500 EUR
-        raanan_flights = Scope(
-            id=RAANAN_FLIGHTS_ID,
-            issued_by_scope_id=ROOT_SCOPE_ID,
+        # 4. Delegate flights scope for Raanan (all types, cost <= 1500)
+        flights_child = Scope(
+            id=str(uuid_mod.uuid4()),
+            issued_by_scope_id=self.root_scope.id,
             issued_by="principal:coordinator",
-            issued_at=ACTIVATED_AT,
+            issued_at=now_utc(),
             expires_at=EXPIRES_AT,
             domain=Domain(
                 namespace="travel.flights",
                 types=(OperationType.OBSERVE, OperationType.PROPOSE, OperationType.COMMIT),
             ),
-            predicate="TOP",
+            predicate="action.params.cost <= 1500",
             ceiling="action.params.cost <= 1500",
             delegate=False,
             revoke="principal_only",
         )
-        self.runtime.scopes.add(raanan_flights)
+        _, self.flights_scope = self.ctx.delegate_scope(
+            parent_scope_id=self.root_scope.id,
+            child=flights_child,
+            contract_id=self.contract.contract_id,
+            initiated_by="principal:coordinator",
+        )
 
-        # 5. Yaki's accommodation scope — travel.accommodation, OBSERVE+PROPOSE only
-        yaki_accommodation = Scope(
-            id=YAKI_ACCOMMODATION_ID,
-            issued_by_scope_id=ROOT_SCOPE_ID,
+        # 5. Delegate accommodation scope for Yaki (OBSERVE+PROPOSE only)
+        accom_child = Scope(
+            id=str(uuid_mod.uuid4()),
+            issued_by_scope_id=self.root_scope.id,
             issued_by="principal:coordinator",
-            issued_at=ACTIVATED_AT,
+            issued_at=now_utc(),
             expires_at=EXPIRES_AT,
             domain=Domain(
                 namespace="travel.accommodation",
                 types=(OperationType.OBSERVE, OperationType.PROPOSE),
             ),
-            predicate="TOP",
+            predicate="action.params.cost <= 1500",
             ceiling="action.params.cost <= 1500",
             delegate=False,
             revoke="principal_only",
         )
-        self.runtime.scopes.add(yaki_accommodation)
+        _, self.accommodation_scope = self.ctx.delegate_scope(
+            parent_scope_id=self.root_scope.id,
+            child=accom_child,
+            contract_id=self.contract.contract_id,
+            initiated_by="principal:coordinator",
+        )
 
         # 6. Set budget ceilings
-        self.runtime.budget.set_ceiling(ROOT_SCOPE_ID, "EUR", "3000.00")
-        self.runtime.budget.set_ceiling(RAANAN_FLIGHTS_ID, "EUR", "1500.00")
-        self.runtime.budget.set_ceiling(YAKI_ACCOMMODATION_ID, "EUR", "1500.00")
+        self.ctx.set_budget_ceiling(self.root_scope.id, "EUR", "3000.00")
+        self.ctx.set_budget_ceiling(self.flights_scope.id, "EUR", "1500.00")
+        self.ctx.set_budget_ceiling(self.accommodation_scope.id, "EUR", "1500.00")
+
+        # 7. Create SDK tool instances
+        tool_key = self.ctx.keypair(PRINCIPALS[0])
+        self.flights_tool = FlightsTool(key_pair=tool_key, runtime=self.ctx.runtime)
+        self.hotels_tool = HotelsTool(key_pair=tool_key, runtime=self.ctx.runtime)
 
         self._setup_complete = True
+        return self._setup_response("setup_complete")
 
+    def _setup_response(self, status: str) -> dict:
         return {
-            "status": "setup_complete",
-            "contract_id": CONTRACT_ID,
-            "contract_hash": self.runtime.contracts.get(CONTRACT_ID).descriptor_hash,
+            "status": status,
+            "contract_id": self.contract.contract_id,
+            "contract_hash": self.contract.descriptor_hash,
             "scopes": {
-                "root": ROOT_SCOPE_ID,
-                "raanan_flights": RAANAN_FLIGHTS_ID,
-                "yaki_accommodation": YAKI_ACCOMMODATION_ID,
+                "root": self.root_scope.id,
+                "raanan_flights": self.flights_scope.id,
+                "yaki_accommodation": self.accommodation_scope.id,
             },
             "principals": PRINCIPALS,
         }
 
-    # ── Flow 2/3: Commit action ───────────────────────────────
+    # ── Flow 2/3: Commit action via SDK tools ─────────────────
 
     def commit_action(
         self,
@@ -217,60 +246,40 @@ class DemoState:
         scope_id: str,
         action: dict[str, Any],
         budget_amounts: dict[str, str] | None = None,
-    ) -> Receipt:
+    ) -> ToolResult | Receipt:
         """
-        Execute a COMMIT through the runtime.
+        Execute a COMMIT through the SDK tool pipeline.
 
-        On success: calls the appropriate connector stub, then commits
-        with the external_ref.
-        On failure: returns the failure receipt directly.
+        Routes the generic action dict to the appropriate @vincul_tool_action.
+        Returns ToolResult on tool match, Receipt on fallback.
         """
-        # Pre-validate to decide if we should call the connector
-        result = self.runtime.validator.validate_action(
-            action, scope_id, CONTRACT_ID,
-            budget_amounts=budget_amounts,
-        )
+        ns = action.get("namespace", "")
+        resource = action.get("resource", "")
+        params = action.get("params", {})
 
-        if not result:
-            # Emit failure receipt through runtime
-            return self.runtime.commit(
-                action=action,
+        # Route to appropriate tool based on namespace
+        tool = None
+        if "flights" in ns:
+            tool = self.flights_tool
+        elif "accommodation" in ns or "hotels" in ns:
+            tool = self.hotels_tool
+
+        if tool:
+            return tool.book(
                 scope_id=scope_id,
-                contract_id=CONTRACT_ID,
+                contract_id=self.contract.contract_id,
                 initiated_by=principal,
                 budget_amounts=budget_amounts,
+                resource=resource,
+                cost=params.get("cost", 0),
             )
 
-        # Determine which connector to use based on namespace
-        ns = action.get("namespace", "")
-        connector_key = None
-        if "flights" in ns:
-            connector_key = "flights"
-        elif "accommodation" in ns or "hotels" in ns:
-            connector_key = "hotels"
-
-        external_ref = None
-        reversible = False
-        revert_window = None
-
-        if connector_key and connector_key in self.connectors:
-            connector = self.connectors[connector_key]
-            connector_result = connector.book(
-                action.get("resource", ""),
-                action.get("params", {}),
-            )
-            external_ref = connector_result.external_ref
-            reversible = connector_result.reversible
-            revert_window = connector_result.revert_window
-
-        return self.runtime.commit(
+        # Fallback: no tool matched, commit via context
+        return self.ctx.commit(
             action=action,
             scope_id=scope_id,
-            contract_id=CONTRACT_ID,
+            contract_id=self.contract.contract_id,
             initiated_by=principal,
-            reversible=reversible,
-            revert_window=revert_window,
-            external_ref=external_ref,
             budget_amounts=budget_amounts,
         )
 
@@ -299,9 +308,6 @@ class DemoState:
         """
         Cast a vote. If threshold is met, auto-resolve: issue a new
         delegated scope with the requested permissions.
-
-        Returns (session, receipt_or_none). Receipt is non-None only
-        when the vote passes and a new delegation is issued.
         """
         session = self.votes.get(vote_id)
         if session is None:
@@ -309,32 +315,30 @@ class DemoState:
         if session.resolved:
             return session, None
         if principal in session.votes_for:
-            return session, None  # already voted
+            return session, None
 
         session.votes_for.append(principal)
 
         receipt = None
         if len(session.votes_for) >= session.threshold:
-            # Vote passes — issue new delegation
             receipt = self._resolve_vote(session)
 
         return session, receipt
 
     def _resolve_vote(self, session: VoteSession) -> Receipt:
         """Issue a new delegation based on a passing vote."""
-        new_scope_id = f"s0000000-0000-0000-0000-{uuid_mod.uuid4().hex[:12]}"
+        new_scope_id = str(uuid_mod.uuid4())
         session.resolved = True
         session.new_scope_id = new_scope_id
 
-        # Build the widened scope
         types = tuple(OperationType(t) for t in session.requested_types)
-        parent = self.runtime.scopes.get_or_raise(session.scope_id)
+        parent = self.ctx.scopes.get_or_raise(session.scope_id)
 
         child = Scope(
             id=new_scope_id,
             issued_by_scope_id=parent.issued_by_scope_id or parent.id,
             issued_by="principal:coordinator",
-            issued_at=ACTIVATED_AT,
+            issued_at=now_utc(),
             expires_at=EXPIRES_AT,
             domain=Domain(
                 namespace=parent.domain.namespace,
@@ -346,18 +350,16 @@ class DemoState:
             revoke="principal_only",
         )
 
-        # Use runtime.delegate to get a proper delegation receipt
         parent_scope_id = parent.issued_by_scope_id or parent.id
-        receipt = self.runtime.delegate(
+        receipt, _ = self.ctx.delegate_scope(
             parent_scope_id=parent_scope_id,
             child=child,
-            contract_id=CONTRACT_ID,
+            contract_id=self.contract.contract_id,
             initiated_by="principal:coordinator",
         )
 
-        # Set budget ceiling for the new scope if delegation succeeded
         if receipt.outcome == "success":
-            self.runtime.budget.set_ceiling(new_scope_id, "EUR", "1500.00")
+            self.ctx.set_budget_ceiling(new_scope_id, "EUR", "1500.00")
 
         return receipt
 
@@ -368,26 +370,19 @@ class DemoState:
         initiated_by: str,
         signatures: list[str],
     ) -> list[Receipt]:
-        """
-        Dissolve the contract and revoke all scopes.
-
-        Returns list of receipts (dissolution + revocations).
-        """
+        """Dissolve the contract and revoke all scopes."""
         receipts: list[Receipt] = []
 
-        # Dissolve contract
-        dissolution = self.runtime.dissolve_contract(
-            contract_id=CONTRACT_ID,
-            dissolved_at="2026-07-01T00:00:00Z",
+        dissolution = self.ctx.dissolve_contract(
+            contract_id=self.contract.contract_id,
             dissolved_by=initiated_by,
             signatures=signatures,
         )
         receipts.append(dissolution)
 
-        # Revoke root scope (cascades to all children)
-        rev_receipt, rev_result = self.runtime.revoke(
-            scope_id=ROOT_SCOPE_ID,
-            contract_id=CONTRACT_ID,
+        rev_receipt, _ = self.ctx.revoke_scope(
+            scope_id=self.root_scope.id,
+            contract_id=self.contract.contract_id,
             initiated_by=initiated_by,
         )
         receipts.append(rev_receipt)
@@ -396,34 +391,32 @@ class DemoState:
 
     # ── Enriched state (for frontend) ─────────────────────────
 
-    # Scope-to-principal mapping — demo fixture knowledge, not protocol concept
-    _SCOPE_PRINCIPAL_MAP: dict[str, str] = {
-        ROOT_SCOPE_ID: "principal:coordinator",
-        RAANAN_FLIGHTS_ID: "principal:raanan",
-        YAKI_ACCOMMODATION_ID: "principal:yaki",
-    }
-
     def enriched_state(self) -> dict:
         """Return enriched demo state for GET /demo/state."""
-        contract = self.runtime.contracts.get(CONTRACT_ID)
-        if not contract:
+        if not self.contract:
             return {"contract": None, "principals": [], "governance": {},
                     "budget_policy": {}, "scopes": [], "receipt_count": 0}
 
-        # Build scope list with principal assignments
-        scope_principal_map = dict(self._SCOPE_PRINCIPAL_MAP)
+        contract = self.ctx.get_contract(self.contract.contract_id)
+
+        # Build scope-to-principal map
+        scope_principal_map = {
+            self.root_scope.id: "principal:coordinator",
+            self.flights_scope.id: "principal:raanan",
+            self.accommodation_scope.id: "principal:yaki",
+        }
         for vote in self.votes.values():
             if vote.new_scope_id:
                 scope_principal_map[vote.new_scope_id] = "principal:yaki"
 
-        all_scope_ids = [ROOT_SCOPE_ID, RAANAN_FLIGHTS_ID, YAKI_ACCOMMODATION_ID]
+        all_scope_ids = [self.root_scope.id, self.flights_scope.id, self.accommodation_scope.id]
         for vote in self.votes.values():
             if vote.new_scope_id:
                 all_scope_ids.append(vote.new_scope_id)
 
         scopes_list = []
         for sid in all_scope_ids:
-            s = self.runtime.scopes.get(sid)
+            s = self.ctx.get_scope(sid)
             if s:
                 scopes_list.append({
                     "id": s.id,
@@ -440,7 +433,7 @@ class DemoState:
 
         return {
             "contract": {
-                "id": CONTRACT_ID,
+                "id": self.contract.contract_id,
                 "title": contract.purpose.get("title", ""),
                 "description": contract.purpose.get("description", ""),
                 "status": contract.activation["status"],
@@ -455,17 +448,31 @@ class DemoState:
             "governance": contract.governance,
             "budget_policy": contract.budget_policy,
             "scopes": scopes_list,
-            "receipt_count": len(self.runtime.receipts),
+            "receipt_count": len(self.ctx.receipts),
         }
 
     # ── Status ────────────────────────────────────────────────
 
     def status_summary(self) -> dict:
         """Return current demo state for GET /demo/status."""
-        contract = self.runtime.contracts.get(CONTRACT_ID)
+        if not self.contract:
+            return {
+                "setup_complete": False,
+                "contract": {"id": None, "status": None, "hash": None},
+                "scopes": [],
+                "receipt_count": 0,
+                "active_votes": {},
+            }
+
+        contract = self.ctx.get_contract(self.contract.contract_id)
+        all_scope_ids = [self.root_scope.id, self.flights_scope.id, self.accommodation_scope.id]
+        for vote in self.votes.values():
+            if vote.new_scope_id:
+                all_scope_ids.append(vote.new_scope_id)
+
         scopes_list = []
-        for sid in [ROOT_SCOPE_ID, RAANAN_FLIGHTS_ID, YAKI_ACCOMMODATION_ID]:
-            s = self.runtime.scopes.get(sid)
+        for sid in all_scope_ids:
+            s = self.ctx.get_scope(sid)
             if s:
                 scopes_list.append({
                     "id": s.id,
@@ -474,27 +481,15 @@ class DemoState:
                     "status": s.status.value,
                 })
 
-        # Include dynamically created scopes from votes
-        for vote in self.votes.values():
-            if vote.new_scope_id:
-                s = self.runtime.scopes.get(vote.new_scope_id)
-                if s:
-                    scopes_list.append({
-                        "id": s.id,
-                        "namespace": s.domain.namespace,
-                        "types": [t.value for t in s.domain.types],
-                        "status": s.status.value,
-                    })
-
         return {
             "setup_complete": self._setup_complete,
             "contract": {
-                "id": CONTRACT_ID,
+                "id": self.contract.contract_id,
                 "status": contract.activation["status"] if contract else None,
                 "hash": contract.descriptor_hash if contract else None,
             },
             "scopes": scopes_list,
-            "receipt_count": len(self.runtime.receipts),
+            "receipt_count": len(self.ctx.receipts),
             "active_votes": {
                 vid: {
                     "request": v.request,

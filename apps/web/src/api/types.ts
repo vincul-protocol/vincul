@@ -179,20 +179,100 @@ export type WsEvent =
       resolved: boolean;
     };
 
-// ── Constants ────────────────────────────────────────────────
+// ── Marketplace types ───────────────────────────────────────
 
-export const PRINCIPALS = [
-  'principal:raanan',
-  'principal:yaki',
-  'principal:coordinator',
-  'principal:alice',
-  'principal:bob',
-  'principal:carol',
-  'principal:dan',
-  'principal:eve',
-] as const;
+export interface MarketplaceVendor {
+  id: string;
+  role: string;
+  pubkey: string;
+}
 
-export const CONTRACT_ID = 'c0000000-0000-0000-0000-000000000001';
-export const ROOT_SCOPE_ID = 's0000000-0000-0000-0000-000000000001';
-export const RAANAN_FLIGHTS_ID = 's0000000-0000-0000-0000-000000000002';
-export const YAKI_ACCOMMODATION_ID = 's0000000-0000-0000-0000-000000000003';
+export interface MarketplaceSetupResult {
+  status: string;
+  vendors: MarketplaceVendor[];
+  tool_manifest: Record<string, unknown>;
+}
+
+export interface MarketplaceContractResult {
+  status: string;
+  contract_id: string;
+  descriptor_hash: string;
+  principals: string[];
+  governance: Record<string, unknown>;
+  purpose: Record<string, unknown>;
+  hash_valid: boolean;
+}
+
+export interface MarketplaceScopeEntry {
+  label: string;
+  id: string;
+  namespace: string;
+  types: string[];
+  ceiling: string;
+  predicate: string;
+  delegate: boolean;
+  status: string;
+  parent_scope_id: string | null;
+  descriptor_hash: string;
+}
+
+export interface MarketplaceDelegationReceipt {
+  receipt_hash: string;
+  child_scope_id: string;
+  parent_scope_id: string;
+}
+
+export interface MarketplaceScopeResult {
+  status: string;
+  scopes: MarketplaceScopeEntry[];
+  delegation_receipts: MarketplaceDelegationReceipt[];
+}
+
+export interface MarketplaceInvokeResult {
+  success: boolean;
+  receipt_kind: string;
+  receipt_hash: string;
+  outcome: string;
+  payload?: Record<string, unknown>;
+  attested_result?: {
+    status: string;
+    tool_id: string;
+    contract_hash: string;
+    scope_hash: string;
+    receipt_hash: string;
+    result_payload: Record<string, unknown>;
+    result_payload_hash: string;
+    external_ref: string;
+    signature: { signer_id: string; algo: string };
+  };
+  signature_valid?: boolean;
+  failure_code?: string;
+  message?: string;
+}
+
+export interface MarketplaceRevokeResult {
+  status: string;
+  revocation_root: string;
+  revoked_scope_ids: string[];
+  effective_at: string;
+  receipt_hash: string;
+  scope_states: Array<{ label: string; id: string; status: string }>;
+}
+
+export interface MarketplaceAuditReceipt {
+  index: number;
+  receipt_kind: string;
+  outcome: string;
+  initiated_by: string;
+  receipt_hash: string;
+  scope_id: string | null;
+  description: string;
+  detail: Record<string, unknown>;
+  hash_valid: boolean;
+}
+
+export interface MarketplaceAuditResult {
+  total_receipts: number;
+  all_hashes_valid: boolean;
+  receipts: MarketplaceAuditReceipt[];
+}

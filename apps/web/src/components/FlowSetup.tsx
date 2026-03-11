@@ -5,7 +5,7 @@ import FlowRunner from './FlowRunner';
 
 interface Props {
   disabled: boolean;
-  onComplete: () => void;
+  onComplete: (result: SetupResult) => void;
 }
 
 export default function FlowSetup({ disabled, onComplete }: Props) {
@@ -14,7 +14,7 @@ export default function FlowSetup({ disabled, onComplete }: Props) {
   const run = async () => {
     const r = await api.setupContract();
     setResult(r);
-    onComplete();
+    onComplete(r);
   };
 
   return (

@@ -1,21 +1,21 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import type { ActionResult } from '../api/types';
-import { YAKI_ACCOMMODATION_ID } from '../api/types';
 import FlowRunner from './FlowRunner';
 
 interface Props {
   disabled: boolean;
+  scopeId: string;
   onComplete: () => void;
 }
 
-export default function FlowYakiDenied({ disabled, onComplete }: Props) {
+export default function FlowYakiDenied({ disabled, scopeId, onComplete }: Props) {
   const [result, setResult] = useState<ActionResult | null>(null);
 
   const run = async () => {
     const r = await api.performAction({
       principal: 'principal:yaki',
-      scope_id: YAKI_ACCOMMODATION_ID,
+      scope_id: scopeId,
       action: {
         type: 'COMMIT',
         namespace: 'travel.accommodation',

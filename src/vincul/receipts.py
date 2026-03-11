@@ -28,7 +28,7 @@ def new_uuid() -> UUID:
 
 # ── Core Receipt dataclass ────────────────────────────────────
 
-@dataclass
+@dataclass(frozen=True)
 class Receipt:
     """
     A Vincul Receipt. Immutable once receipt_hash is set.
@@ -94,8 +94,17 @@ class Receipt:
         return vincul_hash("receipt", self._payload_for_hash())
 
     def seal(self) -> "Receipt":
-        """Compute and set receipt_hash. Returns self for chaining."""
-        self.receipt_hash = self.compute_hash()
+        """Compute and set receipt_hash. Raises if already sealed.
+
+        Not thread-safe: the check-then-set is not atomic. Concurrent
+        callers could both pass the guard. This is acceptable because
+        seal() is deterministic (same fields → same hash) and Vincul
+        stores have no thread-safety guarantees. Callers needing
+        concurrency must synchronize externally.
+        """
+        if self.receipt_hash is not None:
+            raise RuntimeError("Receipt already sealed")
+        object.__setattr__(self, "receipt_hash", self.compute_hash())
         return self
 
     def to_dict(self) -> dict:
@@ -321,6 +330,161 @@ def revocation_receipt(
             "cascade_method":   cascade_method,
             "revert_attempts":  revert_attempts or [],
             "non_revertable":   non_revertable or [],
+        },
+    )
+
+
+def attestation_receipt(
+    *,
+    initiated_by: str,
+    scope_id: UUID,
+    scope_hash: Hash,
+    contract_id: UUID,
+    contract_hash: Hash,
+    attests_receipt_id: UUID,
+    attests_receipt_hash: Hash,
+    response_hash_algo: str,
+    response_hash_value: str,
+    response_schema: str,
+    external_ref: str | None,
+    produced_at: Timestamp,
+    prior_receipt: Hash | None = None,
+    description: str = "",
+) -> Receipt:
+    return _base(
+        kind          = ReceiptKind.ATTESTATION,
+        action        = "attest",
+        description   = description or f"Attest to commitment {attests_receipt_id}",
+        initiated_by  = initiated_by,
+        scope_id      = scope_id,
+        scope_hash    = scope_hash,
+        contract_id   = contract_id,
+        contract_hash = contract_hash,
+        signatories   = [initiated_by],
+        outcome       = "success",
+        detail        = {
+            "attests_receipt_id":   attests_receipt_id,
+            "attests_receipt_hash": attests_receipt_hash,
+            "response_hash": {
+                "algo":  response_hash_algo,
+                "value": response_hash_value,
+            },
+            "response_schema": response_schema,
+            "external_ref":    external_ref,
+            "produced_at":     produced_at,
+        },
+        prior_receipt = prior_receipt,
+    )
+
+
+def revert_attempt_receipt(
+    *,
+    initiated_by: str,
+    scope_id: UUID,
+    scope_hash: Hash,
+    contract_id: UUID,
+    contract_hash: Hash,
+    target_commitment: UUID,
+    triggered_by: UUID,
+    revert_detail: str,
+    residual: str | None = None,
+    outcome: str = "success",
+    prior_receipt: Hash | None = None,
+    description: str = "",
+) -> Receipt:
+    return _base(
+        kind          = ReceiptKind.REVERT_ATTEMPT,
+        action        = "revert",
+        description   = description or f"Revert attempt for commitment {target_commitment}",
+        initiated_by  = initiated_by,
+        scope_id      = scope_id,
+        scope_hash    = scope_hash,
+        contract_id   = contract_id,
+        contract_hash = contract_hash,
+        signatories   = [initiated_by],
+        outcome       = outcome,
+        detail        = {
+            "target_commitment": target_commitment,
+            "triggered_by":     triggered_by,
+            "revert_detail":    revert_detail,
+            "residual":         residual,
+        },
+        prior_receipt = prior_receipt,
+    )
+
+
+def ledger_snapshot_receipt(
+    *,
+    initiated_by: str,
+    scope_id: UUID,
+    scope_hash: Hash,
+    contract_id: UUID,
+    contract_hash: Hash,
+    snapshot_type: str,
+    covers_scope_id: UUID,
+    snapshot_from: Timestamp,
+    snapshot_to: Timestamp,
+    balances: list[dict],
+    prior_snapshot: Hash | None = None,
+    commitment_refs: list[Hash] | None = None,
+    prior_receipt: Hash | None = None,
+    description: str = "",
+) -> Receipt:
+    return _base(
+        kind          = ReceiptKind.LEDGER_SNAPSHOT,
+        action        = "ledger_snapshot",
+        description   = description or f"Ledger snapshot ({snapshot_type}) for scope {covers_scope_id}",
+        initiated_by  = initiated_by,
+        scope_id      = scope_id,
+        scope_hash    = scope_hash,
+        contract_id   = contract_id,
+        contract_hash = contract_hash,
+        signatories   = [initiated_by],
+        outcome       = "success",
+        detail        = {
+            "snapshot_type":    snapshot_type,
+            "covers_scope_id":  covers_scope_id,
+            "snapshot_period": {
+                "from": snapshot_from,
+                "to":   snapshot_to,
+            },
+            "balances":         balances,
+            "prior_snapshot":   prior_snapshot,
+            "commitment_refs":  commitment_refs,
+        },
+        prior_receipt = prior_receipt,
+    )
+
+
+def activation_receipt(
+    *,
+    initiated_by: str,
+    contract_id: UUID,
+    contract_hash: Hash,
+    activated_at: Timestamp,
+    decision_rule: str,
+    signatures_present: int,
+    signatories: list[str],
+    description: str = "",
+) -> Receipt:
+    return _base(
+        kind          = ReceiptKind.CONTRACT_ACTIVATION,
+        action        = "activate_contract",
+        description   = description or "Coalition contract activated",
+        initiated_by  = initiated_by,
+        scope_id      = None,
+        scope_hash    = None,
+        contract_id   = contract_id,
+        contract_hash = contract_hash,
+        signatories   = signatories,
+        outcome       = "success",
+        detail        = {
+            "contract_id":          contract_id,
+            "contract_hash":        contract_hash,
+            "activated_at":         activated_at,
+            "activated_by":         initiated_by,
+            "decision_rule":        decision_rule,
+            "signatures_present":   signatures_present,
         },
     )
 
