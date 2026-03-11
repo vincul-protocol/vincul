@@ -1,8 +1,9 @@
-"""Agentic demo engine — runs LLM agents under Vincul governance over VinculNet.
+"""Agentic demo engine — base class for multi-agent negotiation under Vincul governance.
 
-Uses Strands Agents SDK with Bedrock. Each agent turn calls Claude via Strands
-with custom tools that enforce actions through Vincul's 7-step pipeline and
-broadcast receipts over VinculNet.
+Framework-specific subclasses (Strands, LangGraph) override three methods:
+  _make_tools()   — wrap raw tools with the framework's decorator
+  _build_agents() — create framework-specific agent instances
+  _agent_turn()   — invoke the framework agent for one turn
 """
 
 from __future__ import annotations
@@ -11,12 +12,9 @@ import asyncio
 import copy
 import json
 import logging
-from dataclasses import dataclass, field
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any
-
-from botocore.config import Config as BotocoreConfig
-from strands import Agent, tool
-from strands.models.bedrock import BedrockModel
 
 from vincul.identity import KeyPair
 from vincul.receipts import Receipt, new_uuid, now_utc
@@ -45,9 +43,6 @@ class ModelConfig:
     region_name: str = "us-west-2"
     temperature: float = 0.7
     max_tokens: int = 1024
-    connect_timeout: int = 120
-    read_timeout: int = 120
-    max_retries: int = 5
 
 
 @dataclass
@@ -64,8 +59,12 @@ class NegotiationEvent:
     receipt_hash: str | None = None
 
 
-class NegotiationEngine:
-    """Orchestrates multi-agent negotiation under Vincul governance."""
+class NegotiationEngine(ABC):
+    """Orchestrates multi-agent negotiation under Vincul governance.
+
+    Subclasses provide framework-specific tool construction, agent building,
+    and turn execution.
+    """
 
     def __init__(
         self,
@@ -97,13 +96,27 @@ class NegotiationEngine:
         self._commit_authorities: dict[str, set[str]] = {}
         # Enriched system prompts built after setup
         self._system_prompts: dict[str, str] = {}
-        # Strands Agent instances per principal
-        self._strands_agents: dict[str, Agent] = {}
         # VinculAgentContext per principal
         self._vincul_agents: dict[str, VinculAgentContext] = {}
         # Current principal context for tool dispatch
         self._current_principal: str | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
+
+    # ── Abstract methods (framework-specific) ──────────────
+
+    @abstractmethod
+    def _make_tools(self) -> list:
+        """Create framework-wrapped tool functions."""
+
+    @abstractmethod
+    def _build_agents(self) -> None:
+        """Create framework-specific agent instances per principal."""
+
+    @abstractmethod
+    async def _agent_turn(self, principal_id: str, round_num: int) -> None:
+        """Execute one agent turn using the framework."""
+
+    # ── Event callbacks ────────────────────────────────────
 
     def on_event(self, callback) -> None:
         self._event_callbacks.append(callback)
@@ -120,13 +133,16 @@ class NegotiationEngine:
         for cb in self._receipt_callbacks:
             cb(receiver, sender, receipt_hash)
 
-    # ── Tools (Strands @tool + Vincul @vincul_enforce) ─────
+    # ── Shared tool creation ───────────────────────────────
 
-    def _make_tools(self):
-        """Create tool functions bound to this engine instance."""
+    def _make_raw_tools(self):
+        """Create tool functions with @vincul_enforce applied but no framework decorator.
+
+        Returns (propose_terms, accept_terms, send_message) — ready to be
+        wrapped by the subclass's framework decorator.
+        """
         engine = self
 
-        @tool(name="propose_terms")
         @vincul_enforce(
             action_type=OperationType.PROPOSE,
             tool_id="agentic_demo:propose_terms",
@@ -149,7 +165,6 @@ class NegotiationEngine:
             """
             return {"category": category, "params": params}
 
-        @tool(name="accept_terms")
         @vincul_enforce(
             action_type=OperationType.COMMIT,
             tool_id="agentic_demo:accept_terms",
@@ -172,7 +187,6 @@ class NegotiationEngine:
             """
             return {"category": category, "params": params}
 
-        @tool(name="send_message")
         def send_message(message: str) -> str:
             """Send a message to other negotiation parties. Use to discuss or explain position.
 
@@ -190,9 +204,9 @@ class NegotiationEngine:
             engine._broadcast_message(pid, message)
             return json.dumps({"status": "sent", "message": "Message delivered to all parties"})
 
-        return [propose_terms, accept_terms, send_message]
+        return propose_terms, accept_terms, send_message
 
-    # ── Callbacks for @vincul_enforce ─────────────────────
+    # ── Callbacks for @vincul_enforce ──────────────────────
 
     def _check_agreed(self, category: str) -> str | None:
         """Pre-check: deny if category is already agreed."""
@@ -321,7 +335,7 @@ class NegotiationEngine:
 
         asyncio.run_coroutine_threadsafe(_send(), self._loop).result(timeout=10)
 
-    # ── Setup ─────────────────────────────────────────────
+    # ── Setup ──────────────────────────────────────────────
 
     async def setup(self) -> None:
         """Initialize contracts, scopes, peers, and VinculNet connections."""
@@ -431,7 +445,7 @@ class NegotiationEngine:
 
         print(f"\n  Setup complete. {len(self.peers)} agents ready.")
 
-        # 6. Build system prompts and Strands agents
+        # 6. Build system prompts and framework agents
         self._build_system_prompts()
         self._build_agents()
 
@@ -465,30 +479,7 @@ class NegotiationEngine:
             own_auth = "YOUR AUTHORITY:\n" + "\n".join(my_scopes)
             self._system_prompts[pid] = f"{config.system_prompt}\n\n{shared}\n\n{own_auth}"
 
-    def _build_agents(self) -> None:
-        """Create a Strands Agent per principal."""
-        tools = self._make_tools()
-        cfg = self.model_config
-
-        for pid in self.agent_configs:
-            model = BedrockModel(
-                model_id=cfg.model_id,
-                region_name=cfg.region_name,
-                temperature=cfg.temperature,
-                max_tokens=cfg.max_tokens,
-                boto_client_config=BotocoreConfig(
-                    connect_timeout=cfg.connect_timeout,
-                    read_timeout=cfg.read_timeout,
-                    retries={"max_attempts": cfg.max_retries, "mode": "adaptive"},
-                ),
-            )
-            self._strands_agents[pid] = Agent(
-                model=model,
-                tools=tools,
-                system_prompt=self._system_prompts[pid],
-            )
-
-    # ── Run negotiation ───────────────────────────────────
+    # ── Run negotiation ────────────────────────────────────
 
     async def run(self) -> None:
         """Run the negotiation for max_rounds rounds."""
@@ -528,35 +519,7 @@ class NegotiationEngine:
             return False
         return all(cat in self._agreed for cat in self._commit_authorities)
 
-    async def _agent_turn(self, principal_id: str, round_num: int) -> None:
-        """Execute one turn for an agent using Strands."""
-        config = self.agent_configs[principal_id]
-        context = self._build_context(principal_id)
-
-        print(f"\n  [{config.agent_id}] thinking...")
-
-        # Set current principal so tools know who's calling
-        self._current_principal = principal_id
-
-        try:
-            agent = self._strands_agents[principal_id]
-            # Strands handles the agentic loop (tool calls, retries) automatically
-            result = await asyncio.to_thread(agent, context)
-
-            # Extract text response
-            text = str(result)
-            if text.strip():
-                print(f"\n  [{config.agent_id}] {text.strip()[:200]}")
-
-            # Reset conversation for next turn
-            agent.messages.clear()
-
-        except Exception as e:
-            print(f"\n  [{config.agent_id}] Agent error: {e}")
-        finally:
-            self._current_principal = None
-
-    # ── Context building ──────────────────────────────────
+    # ── Context building ───────────────────────────────────
 
     def _build_context(self, principal_id: str) -> str:
         parts = []
@@ -603,7 +566,7 @@ class NegotiationEngine:
         print(f"  [{config.agent_id}] 📨 Receipt from {sender_id}: {receipt.receipt_hash[:20]}...")
         self._emit_receipt(principal_id, sender_id, receipt.receipt_hash[:32])
 
-    # ── Summary ───────────────────────────────────────────
+    # ── Summary ────────────────────────────────────────────
 
     def _print_summary(self) -> None:
         print(f"\n  Timeline: {len(self.timeline)} events")
@@ -631,7 +594,7 @@ class NegotiationEngine:
             for d in denials:
                 print(f"    {d.agent_id} -> {d.category}: {d.failure_code}")
 
-    # ── Cleanup ───────────────────────────────────────────
+    # ── Cleanup ────────────────────────────────────────────
 
     async def cleanup(self) -> None:
         for peer in self.peers.values():

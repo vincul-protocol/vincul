@@ -1,5 +1,5 @@
 """
-apps.server.demo_state — DemoState singleton (SDK-driven)
+apps.trip_planner.state — DemoState singleton (SDK-driven)
 
 Uses VinculContext + @vincul_tool / @vincul_tool_action for the
 8-friends-trip scenario.
@@ -18,8 +18,7 @@ from vincul.scopes import Scope
 from vincul.sdk import VinculContext, vincul_tool, vincul_tool_action, ToolResult
 from vincul.types import Domain, OperationType
 
-from connectors.flights import FlightsConnector
-from connectors.hotels import HotelsConnector
+from .connectors import FlightsConnector, HotelsConnector
 
 
 # ── Stable principal identifiers ─────────────────────────────
@@ -391,12 +390,6 @@ class DemoState:
         return receipts
 
     # ── Enriched state (for frontend) ─────────────────────────
-
-    _SCOPE_PRINCIPAL_MAP_TEMPLATE = {
-        "root": "principal:coordinator",
-        "raanan_flights": "principal:raanan",
-        "yaki_accommodation": "principal:yaki",
-    }
 
     def enriched_state(self) -> dict:
         """Return enriched demo state for GET /demo/state."""

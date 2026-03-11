@@ -1,5 +1,5 @@
 """
-apps.server.marketplace_state — MarketplaceState for cross-vendor tool marketplace demo.
+apps.tool_marketplace.state — MarketplaceState for cross-vendor tool marketplace demo.
 
 Wraps VinculContext + SDK decorators (@vincul_tool, @vincul_agent) to drive
 the 6-step marketplace scenario through the webapp.
@@ -10,48 +10,12 @@ from __future__ import annotations
 from typing import Any
 
 from vincul.identity import verify
-from vincul.sdk import VinculContext, vincul_tool, vincul_tool_action, vincul_agent, vincul_agent_action, ToolResult
+from vincul.sdk import VinculContext, ToolResult
 from vincul.types import OperationType, ReceiptKind, ScopeStatus
 
+from .vendor_a_agent import VendorABuyerAgent, VENDOR_A_ID, VENDOR_B_ID, VENDOR_C_ID, AGENT_ID
+from .vendor_b_tool import VendorBToolProvider, TOOL_NAMESPACE
 
-# ── Stable identifiers ───────────────────────────────────────
-
-VENDOR_A_ID = "vendor:VendorA"
-VENDOR_B_ID = "vendor:VendorB"
-VENDOR_C_ID = "vendor:VendorC"
-AGENT_ID = "agent:VendorA:buyerAgent1"
-TOOL_ID = "tool:VendorB:order-tool"
-TOOL_VERSION = "0.1.0"
-TOOL_NAMESPACE = "marketplace.orders"
-
-
-# ── Decorated tool and agent ─────────────────────────────────
-
-@vincul_tool(namespace=TOOL_NAMESPACE, tool_id=TOOL_ID, tool_version=TOOL_VERSION)
-class OrderTool:
-    def __init__(self, key_pair, runtime):
-        self.key_pair = key_pair
-        self.runtime = runtime
-        self._order_counter = 0
-
-    @vincul_tool_action(action_type=OperationType.COMMIT, resource_key="item_id")
-    def place_order(self, *, item_id: str, quantity: int, shipping_zip: str) -> dict:
-        self._order_counter += 1
-        return {
-            "order_id": f"order-demo-{self._order_counter:04d}",
-            "charged_amount_usd": round(12.34 * quantity, 2),
-            "notes": "dummy order placed",
-        }
-
-
-@vincul_agent(agent_id=AGENT_ID)
-class BuyerAgent:
-    @vincul_agent_action(operation="place_order")
-    def buy(self, tool, *, item_id: str, quantity: int, shipping_zip: str) -> ToolResult:
-        """Place an order through the tool provider."""
-
-
-# ── MarketplaceState ─────────────────────────────────────────
 
 class MarketplaceState:
     """
@@ -61,8 +25,8 @@ class MarketplaceState:
 
     def __init__(self) -> None:
         self.ctx: VinculContext | None = None
-        self.tool: OrderTool | None = None
-        self.agent: BuyerAgent | None = None
+        self.tool: VendorBToolProvider | None = None
+        self.agent: VendorABuyerAgent | None = None
         self.contract = None
         self.scopes: list = []
         self._setup_complete = False
@@ -86,7 +50,7 @@ class MarketplaceState:
         key_b = self.ctx.add_principal(VENDOR_B_ID, role="tool_provider", permissions=["delegate", "commit", "revoke"])
         key_c = self.ctx.add_principal(VENDOR_C_ID, role="data_provider", permissions=["commit"])
 
-        self.tool = OrderTool(key_pair=key_b, runtime=self.ctx.runtime)
+        self.tool = VendorBToolProvider(key_pair=key_b, runtime=self.ctx.runtime)
         self._setup_complete = True
 
         return {
@@ -180,7 +144,7 @@ class MarketplaceState:
             ],
         )
 
-        self.agent = BuyerAgent(contract=self.contract, scopes=[self.scopes[-1]])
+        self.agent = VendorABuyerAgent(contract=self.contract, scopes=[self.scopes[-1]])
         self._scope_complete = True
 
         # Collect delegation receipts
@@ -370,7 +334,7 @@ class MarketplaceState:
                 {"ceiling": "params.quantity <= 5", "delegate": False, "ttl_hours": 1},
             ],
         )
-        self.agent = BuyerAgent(contract=self.contract, scopes=[self.scopes[-1]])
+        self.agent = VendorABuyerAgent(contract=self.contract, scopes=[self.scopes[-1]])
 
 
 # ── Module-level singleton ────────────────────────────────────

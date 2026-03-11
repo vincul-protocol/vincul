@@ -1,11 +1,12 @@
 """Run the agentic term sheet negotiation demo.
 
 Usage:
-    python -m apps.agentic_demo.run [--rogue] [--rounds N]
+    python -m apps.agentic_demo.run [--framework strands|langgraph] [--rogue] [--rounds N]
 
 Flags:
-    --rogue   Use aggressive investor agent (demonstrates Vincul enforcement)
-    --rounds  Number of negotiation rounds (default: 5)
+    --framework  Agent framework to use (default: strands)
+    --rogue      Use aggressive investor agent (demonstrates Vincul enforcement)
+    --rounds     Number of negotiation rounds (default: 5)
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import argparse
 import asyncio
 import logging
 
-from apps.agentic_demo.engine import AgentConfig, NegotiationEngine
+from apps.agentic_demo.engine import AgentConfig
 from apps.agentic_demo.scenarios.term_sheet import (
     AGENT_A_ID,
     AGENT_B_ID,
@@ -35,6 +36,8 @@ from apps.agentic_demo.scenarios.term_sheet import (
 
 def main():
     parser = argparse.ArgumentParser(description="Vincul Agentic Demo — Term Sheet Negotiation")
+    parser.add_argument("--framework", choices=["strands", "langgraph"], default="strands",
+                        help="Agent framework (default: strands)")
     parser.add_argument("--rogue", action="store_true", help="Use aggressive investor agent")
     parser.add_argument("--rounds", type=int, default=5, help="Number of negotiation rounds")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
@@ -54,6 +57,7 @@ def main():
     mode = "ROGUE INVESTOR" if args.rogue else "COOPERATIVE"
     print(f"\n{'=' * 70}")
     print(f"  VINCUL AGENTIC DEMO — Term Sheet Negotiation")
+    print(f"  Framework: {args.framework}")
     print(f"  Mode: {mode}")
     print(f"  Rounds: {args.rounds}")
     print(f"{'=' * 70}")
@@ -82,17 +86,28 @@ def main():
         ),
     ]
 
-    engine = NegotiationEngine(
-        agents=agents,
-        contract_purpose=CONTRACT_PURPOSE,
-        contract_description=CONTRACT_DESCRIPTION,
-        max_rounds=args.rounds,
-    )
+    # Late import to avoid pulling in unused framework deps
+    if args.framework == "langgraph":
+        from apps.agentic_demo.langgraph_engine import LangGraphNegotiationEngine
+        engine = LangGraphNegotiationEngine(
+            agents=agents,
+            contract_purpose=CONTRACT_PURPOSE,
+            contract_description=CONTRACT_DESCRIPTION,
+            max_rounds=args.rounds,
+        )
+    else:
+        from apps.agentic_demo.strands_engine import StrandsNegotiationEngine
+        engine = StrandsNegotiationEngine(
+            agents=agents,
+            contract_purpose=CONTRACT_PURPOSE,
+            contract_description=CONTRACT_DESCRIPTION,
+            max_rounds=args.rounds,
+        )
 
     asyncio.run(_run(engine))
 
 
-async def _run(engine: NegotiationEngine) -> None:
+async def _run(engine) -> None:
     try:
         await engine.setup()
         await engine.run()

@@ -11,7 +11,8 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse, StreamingResponse
 
-from apps.agentic_demo.engine import AgentConfig, NegotiationEngine, NegotiationEvent
+from apps.agentic_demo.engine import AgentConfig, NegotiationEvent
+from apps.agentic_demo.strands_engine import StrandsNegotiationEngine
 from apps.agentic_demo.scenarios.term_sheet import (
     AGENT_A_ID, AGENT_B_ID, AGENT_INV_ID,
     CONTRACT_DESCRIPTION, CONTRACT_PURPOSE,
@@ -64,7 +65,7 @@ async def run_negotiation(
             ),
         ]
 
-        engine = NegotiationEngine(
+        engine = StrandsNegotiationEngine(
             agents=agents,
             contract_purpose=CONTRACT_PURPOSE,
             contract_description=CONTRACT_DESCRIPTION,

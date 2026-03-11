@@ -6,7 +6,6 @@ Run with: uvicorn apps.server.main:app --reload
 
 from __future__ import annotations
 
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -14,9 +13,14 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from apps.server.demo_state import demo_state
-from apps.server.routes import actions, contract, demo, marketplace, votes
 from apps.server.websocket import manager
+from apps.tool_marketplace import routes as marketplace
+from apps.trip_planner.routes import (
+    action_router,
+    contract_router,
+    demo_router,
+    vote_router,
+)
 
 # Frontend dist directory (built by Vite)
 _WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
@@ -25,7 +29,6 @@ _WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize demo state on startup."""
-    # Could pre-setup here, but we let the user call /contract/setup explicitly
     yield
 
 
@@ -37,10 +40,10 @@ app = FastAPI(
 )
 
 # Include route modules
-app.include_router(demo.router)
-app.include_router(contract.router)
-app.include_router(actions.router)
-app.include_router(votes.router)
+app.include_router(demo_router)
+app.include_router(contract_router)
+app.include_router(action_router)
+app.include_router(vote_router)
 app.include_router(marketplace.router)
 
 
@@ -50,7 +53,6 @@ async def websocket_endpoint(ws: WebSocket):
     await manager.connect(ws)
     try:
         while True:
-            # Keep connection alive; we only broadcast from server side
             await ws.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(ws)

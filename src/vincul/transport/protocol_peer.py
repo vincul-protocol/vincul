@@ -44,6 +44,7 @@ class ProtocolPeer:
         self.peer = VinculPeer(principal_id, keypair)
         self.runtime = VinculRuntime()
         self._receipt_handlers: list[Callable[[str, Receipt], None]] = []
+        self._message_handlers: list[Callable[[str, dict], None]] = []
 
         # Wire transport messages to protocol dispatch
         self.peer.on_message(self._dispatch)
@@ -128,6 +129,13 @@ class ProtocolPeer:
         """
         self._receipt_handlers.append(handler)
 
+    def on_peer_message(self, handler: Callable[[str, dict], None]) -> None:
+        """Register a callback for non-receipt messages (e.g. chat).
+
+        handler(sender_id: str, payload: dict) -> None
+        """
+        self._message_handlers.append(handler)
+
     # ── Internal dispatch ─────────────────────────────────────
 
     def _dispatch(self, sender_id: str, payload: dict) -> None:
@@ -136,9 +144,12 @@ class ProtocolPeer:
         if msg_type == "receipt":
             self._handle_receipt(sender_id, payload)
         else:
-            logger.warning(
-                f"[{self.principal_id}] Unknown message type: {msg_type}"
-            )
+            for handler in self._message_handlers:
+                handler(sender_id, payload)
+            if not self._message_handlers:
+                logger.debug(
+                    f"[{self.principal_id}] Unhandled message type: {msg_type}"
+                )
 
     def _handle_receipt(self, sender_id: str, payload: dict) -> None:
         """Verify and store an incoming receipt."""

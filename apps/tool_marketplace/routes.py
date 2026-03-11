@@ -1,5 +1,5 @@
 """
-routes.marketplace — Cross-vendor tool marketplace demo endpoints.
+apps.tool_marketplace.routes — Cross-vendor tool marketplace demo endpoints.
 
 6 endpoints driving the marketplace scenario step by step.
 """
@@ -10,9 +10,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from apps.server.broadcast import receipt_to_event
-from apps.server.demo_state import demo_state
-from apps.server.marketplace_state import marketplace_state
 from apps.server.websocket import manager
+from apps.tool_marketplace.state import marketplace_state
+from apps.trip_planner.state import demo_state
 
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 

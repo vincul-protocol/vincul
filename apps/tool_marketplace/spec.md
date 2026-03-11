@@ -34,10 +34,9 @@ Portable authority + verifiable results across vendors without centralizing the 
 # Implementation — SDK Alignment
 
 **Status:** Implemented
-**Location:** `samples/cross_vendor_tool_marketplace/`
+**Location:** `apps/tool_marketplace/`
 **SDK Version:** vincul 0.2
 **SDK Layer:** `src/vincul/sdk/`
-**Install:** `pip install -e ".[samples]"`
 
 This demo is built on the **vincul SDK high-level layer** (`vincul.sdk`), which wraps the core vincul constructs behind decorators and context managers. No parallel crypto, hashing, or data models.
 
@@ -192,12 +191,15 @@ src/vincul/sdk/                                     # Reusable SDK layer (inside
 ├── decorators.py           # @vincul_tool, @vincul_tool_action, ToolResult, attested result builder
 └── agent.py                # @vincul_agent, @vincul_agent_action — agent decorators with invoke()
 
-samples/cross_vendor_tool_marketplace/               # Separate package (pip install vincul[samples])
+apps/tool_marketplace/
 ├── __init__.py
 ├── spec.md                 # This file
 ├── vendor_a_agent.py       # Buyer agent — @vincul_agent + @vincul_agent_action (5 lines of logic)
 ├── vendor_b_tool.py        # Order tool — @vincul_tool + @vincul_tool_action (7 lines of logic)
-└── demo.py                 # End-to-end demo runner (9 steps)
+├── state.py                # MarketplaceState — stateful demo driver for webapp
+├── routes.py               # FastAPI endpoints for step-by-step demo
+├── demo.py                 # End-to-end CLI demo runner (9 steps)
+└── demo_vinculnet.py       # VinculNet transport demo (9 steps + receipt exchange)
 ```
 
 ---
