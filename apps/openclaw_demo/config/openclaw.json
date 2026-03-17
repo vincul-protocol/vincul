@@ -1,0 +1,19 @@
+{
+  "gateway": {
+    "port": 18789,
+    "bind": "lan",
+    "mode": "local"
+  },
+  "session": {
+    "scope": "per-sender",
+    "dmScope": "per-channel-peer"
+  },
+  "tools": {
+    "sessions": {
+      "visibility": "all"
+    },
+    "agentToAgent": {
+      "enabled": true
+    }
+  }
+}

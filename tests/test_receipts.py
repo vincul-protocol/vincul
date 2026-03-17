@@ -358,6 +358,7 @@ class TestReceiptFrozen(unittest.TestCase):
         self.assertIn("already sealed", str(ctx.exception))
 
 
+
 class TestSerialization(unittest.TestCase):
     def test_round_trip(self):
         original = make_commitment()

@@ -1,0 +1,7 @@
+{
+  "name": "vincul-interceptor",
+  "version": "0.1.0",
+  "description": "OpenClaw tool.before interceptor for Vincul enforcement",
+  "private": true,
+  "dependencies": {}
+}

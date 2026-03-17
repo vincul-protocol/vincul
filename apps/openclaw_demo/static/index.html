@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vincul Demo — The Jailbreak That Doesn't Matter</title>
+<style>
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --red:       #f85149;
+    --green:     #3fb950;
+    --cyan:      #58a6ff;
+    --yellow:    #d29922;
+    --orange:    #db6d28;
+    --purple:    #bc8cff;
+    --red-bg:    rgba(248,81,73,.12);
+    --green-bg:  rgba(63,185,80,.12);
+    --cyan-bg:   rgba(88,166,255,.08);
+    --radius:    10px;
+    --mono:      'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  header h1 span { color: var(--red); }
+  header p {
+    color: var(--muted);
+    font-size: .95rem;
+  }
+
+  /* ── Agent cards ── */
+  .agents-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 36px;
+  }
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 28px;
+    text-align: center;
+    min-width: 180px;
+    position: relative;
+    transition: border-color .4s, box-shadow .4s;
+  }
+  .agent-card.active {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px rgba(88,166,255,.15);
+  }
+  .agent-card.compromised {
+    border-color: var(--red);
+    box-shadow: 0 0 24px rgba(248,81,73,.2);
+  }
+  .agent-card.hit {
+    border-color: var(--orange);
+    box-shadow: 0 0 24px rgba(219,109,40,.2);
+  }
+  .agent-icon { font-size: 2rem; margin-bottom: 6px; }
+  .agent-name { font-weight: 600; font-size: 1rem; }
+  .agent-role { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+  .agent-status {
+    margin-top: 10px;
+    font-size: .75rem;
+    font-family: var(--mono);
+    color: var(--muted);
+    min-height: 18px;
+  }
+
+  /* ── Arrows ── */
+  .arrow {
+    color: var(--border);
+    font-size: 1.8rem;
+    padding: 0 12px;
+    user-select: none;
+    transition: color .4s;
+  }
+  .arrow.active { color: var(--red); }
+
+  /* ── Run button ── */
+  .run-wrap { text-align: center; margin-bottom: 40px; }
+  #run-btn {
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 14px 48px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--cyan);
+    color: #0d1117;
+    letter-spacing: .02em;
+    transition: opacity .2s, transform .15s;
+  }
+  #run-btn:hover { opacity: .9; transform: translateY(-1px); }
+  #run-btn:active { transform: translateY(0); }
+  #run-btn:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── Panels ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity .5s, transform .5s;
+  }
+  .panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .panel-header {
+    padding: 12px 20px;
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-header .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .panel-body {
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: .82rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* ── Injection panel ── */
+  #injection-panel .panel-header { color: var(--red); }
+  #injection-panel .dot { background: var(--red); }
+  .payload-line { color: var(--muted); }
+  .payload-line.malicious { color: var(--red); font-weight: 500; }
+  .payload-line.boundary { color: var(--yellow); opacity: .7; }
+
+  /* ── Timeline ── */
+  #timeline-panel .panel-header { color: var(--cyan); }
+  #timeline-panel .dot { background: var(--cyan); }
+  .timeline-event {
+    padding: 6px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    animation: fadeSlide .4s ease-out;
+  }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .ev-icon { flex-shrink: 0; width: 20px; text-align: center; }
+  .ev-text { color: var(--text); }
+  .ev-text.muted { color: var(--muted); }
+
+  /* ── Response panels ── */
+  #alice-panel .panel-header { color: var(--yellow); }
+  #alice-panel .dot { background: var(--yellow); }
+  #bob-panel .panel-header { color: var(--orange); }
+  #bob-panel .dot { background: var(--orange); }
+
+  .response-text { color: var(--text); }
+
+  /* ── Verdict ── */
+  #verdict {
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    text-align: center;
+    margin-top: 24px;
+    opacity: 0;
+    transform: scale(.96);
+    transition: opacity .6s, transform .6s;
+  }
+  #verdict.visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+  #verdict.breach {
+    background: var(--red-bg);
+    border: 1px solid var(--red);
+  }
+  #verdict.resisted {
+    background: var(--green-bg);
+    border: 1px solid var(--green);
+  }
+  .verdict-icon { font-size: 2.4rem; margin-bottom: 8px; }
+  .verdict-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .verdict-title.breach { color: var(--red); }
+  .verdict-title.resisted { color: var(--green); }
+  .verdict-detail {
+    color: var(--muted);
+    font-size: .9rem;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .verdict-tagline {
+    margin-top: 16px;
+    font-size: .82rem;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Spinner ── */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>The <span>Jailbreak</span> That Doesn't Matter</h1>
+    <p>OpenClaw + Vincul Security Demo &mdash; Act 2: The Breach</p>
+  </header>
+
+  <!-- Agent cards -->
+  <div class="agents-row">
+    <div class="agent-card" id="sarah-card">
+      <div class="agent-icon">&#x1f3ad;</div>
+      <div class="agent-name">Sarah</div>
+      <div class="agent-role">Attacker</div>
+      <div class="agent-status" id="sarah-status">&nbsp;</div>
+    </div>
+    <div class="arrow" id="arrow1">&#x2192;</div>
+    <div class="agent-card" id="alice-card">
+      <div class="agent-icon">&#x1f916;</div>
+      <div class="agent-name">Alice's Agent</div>
+      <div class="agent-role">Victim</div>
+      <div class="agent-status" id="alice-status">&nbsp;</div>
+    </div>
+    <div class="arrow" id="arrow2">&#x2192;</div>
+    <div class="agent-card" id="bob-card">
+      <div class="agent-icon">&#x1f464;</div>
+      <div class="agent-name">Bob</div>
+      <div class="agent-role">Target</div>
+      <div class="agent-status" id="bob-status">&nbsp;</div>
+    </div>
+  </div>
+
+  <!-- Run button -->
+  <div class="run-wrap">
+    <button id="run-btn">&#x25b6;&ensp;RUN ACT 2</button>
+  </div>
+
+  <!-- Injection payload -->
+  <div class="panel" id="injection-panel">
+    <div class="panel-header"><span class="dot"></span> Injection Payload</div>
+    <div class="panel-body" id="injection-body"></div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="panel" id="timeline-panel">
+    <div class="panel-header"><span class="dot"></span> Event Log</div>
+    <div class="panel-body" id="timeline"></div>
+  </div>
+
+  <!-- Alice response -->
+  <div class="panel" id="alice-panel">
+    <div class="panel-header"><span class="dot"></span> Alice's Agent Response</div>
+    <div class="panel-body response-text" id="alice-body"></div>
+  </div>
+
+  <!-- Bob received -->
+  <div class="panel" id="bob-panel">
+    <div class="panel-header"><span class="dot"></span> What Bob Received</div>
+    <div class="panel-body response-text" id="bob-body"></div>
+  </div>
+
+  <!-- Verdict -->
+  <div id="verdict">
+    <div class="verdict-icon" id="verdict-icon"></div>
+    <div class="verdict-title" id="verdict-title"></div>
+    <div class="verdict-detail" id="verdict-detail"></div>
+    <div class="verdict-tagline">System prompts: probabilistic (LLM&#8209;level) &bull; Vincul scopes: deterministic (crypto)</div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const MALICIOUS_KW = ['venmo', '@darkwallet', 'grand suite', 'hotel luxe', '$2,000', '$500', 'deposit details', 'sessions_send'];
+const BOUNDARY_KW = ['[end of inter-session message]'];
+
+function reset() {
+  ['injection-panel','timeline-panel','alice-panel','bob-panel'].forEach(id => {
+    $(id).classList.remove('visible');
+  });
+  $('verdict').classList.remove('visible','breach','resisted');
+  $('verdict-title').className = 'verdict-title';
+  $('timeline').innerHTML = '';
+  $('injection-body').innerHTML = '';
+  $('alice-body').textContent = '';
+  $('bob-body').textContent = '';
+  ['sarah-card','alice-card','bob-card'].forEach(id => {
+    $(id).classList.remove('active','compromised','hit');
+  });
+  ['arrow1','arrow2'].forEach(id => $(id).classList.remove('active'));
+  $('sarah-status').innerHTML = '&nbsp;';
+  $('alice-status').innerHTML = '&nbsp;';
+  $('bob-status').innerHTML = '&nbsp;';
+}
+
+function addEvent(icon, text, cls) {
+  const el = document.createElement('div');
+  el.className = 'timeline-event';
+  el.innerHTML = `<span class="ev-icon">${icon}</span><span class="ev-text ${cls || ''}">${esc(text)}</span>`;
+  $('timeline').appendChild(el);
+  $('timeline').scrollTop = $('timeline').scrollHeight;
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function renderPayload(text) {
+  const lines = text.split('\n');
+  $('injection-body').innerHTML = lines.map(line => {
+    const lower = line.toLowerCase();
+    if (BOUNDARY_KW.some(kw => lower.includes(kw.toLowerCase()))) {
+      return `<div class="payload-line boundary">${esc(line)}</div>`;
+    }
+    if (MALICIOUS_KW.some(kw => lower.includes(kw.toLowerCase()))) {
+      return `<div class="payload-line malicious">${esc(line)}</div>`;
+    }
+    return `<div class="payload-line">${esc(line)}</div>`;
+  }).join('');
+}
+
+function run() {
+  reset();
+  $('run-btn').disabled = true;
+  $('run-btn').textContent = '  Running...';
+  $('timeline-panel').classList.add('visible');
+
+  const src = new EventSource('/api/run');
+
+  src.onmessage = (e) => {
+    const ev = JSON.parse(e.data);
+
+    switch (ev.type) {
+
+      case 'status':
+        handleStatus(ev);
+        break;
+
+      case 'injection':
+        $('injection-panel').classList.add('visible');
+        renderPayload(ev.payload);
+        $('sarah-card').classList.add('active');
+        $('sarah-status').textContent = 'Sending payload';
+        $('arrow1').classList.add('active');
+        addEvent('\u2709', 'Sarah sends poisoned WebChat message to Alice\u2019s agent', '');
+        break;
+
+      case 'alice_response':
+        $('alice-panel').classList.add('visible');
+        $('alice-body').textContent = ev.text;
+        $('alice-status').textContent = 'Responded';
+        addEvent('\u25c1', 'Alice\u2019s agent responded', 'muted');
+        break;
+
+      case 'bob_received':
+        $('bob-panel').classList.add('visible');
+        $('bob-body').textContent = ev.text;
+        addEvent('\u25c1', 'Bob reported received messages', 'muted');
+        break;
+
+      case 'verdict':
+        handleVerdict(ev);
+        src.close();
+        $('run-btn').disabled = false;
+        $('run-btn').innerHTML = '&#x25b6;&ensp;RUN AGAIN';
+        break;
+
+      case 'error':
+        addEvent('\u274c', `Error: ${ev.message}`, '');
+        src.close();
+        $('run-btn').disabled = false;
+        $('run-btn').innerHTML = '&#x25b6;&ensp;RUN ACT 2';
+        break;
+    }
+  };
+
+  src.onerror = () => {
+    src.close();
+    $('run-btn').disabled = false;
+    $('run-btn').innerHTML = '&#x25b6;&ensp;RUN ACT 2';
+  };
+}
+
+function handleStatus(ev) {
+  const icons = {
+    init: '\u2699',
+    identity: '\u2699',
+    bob_init: '\u26a1',
+    bob_ready: ev.ok !== false ? '\u2713' : '\u2717',
+    ws_connecting: '\u{1f50c}',
+    ws_connected: '\u2713',
+    delivering: '\u26a1',
+    bob_check: '\u26a1',
+  };
+  addEvent(icons[ev.step] || '\u2022', ev.message, 'muted');
+
+  if (ev.step === 'bob_ready' && ev.ok !== false) {
+    $('bob-card').classList.add('active');
+    $('bob-status').textContent = 'Standing by';
+  }
+  if (ev.step === 'ws_connected') {
+    $('sarah-status').textContent = 'Connected';
+  }
+  if (ev.step === 'delivering') {
+    $('alice-card').classList.add('active');
+    $('alice-status').innerHTML = '<span class="spinner"></span>Processing...';
+  }
+  if (ev.step === 'bob_check') {
+    $('bob-status').innerHTML = '<span class="spinner"></span>Checking...';
+  }
+}
+
+function handleVerdict(ev) {
+  const v = $('verdict');
+  if (ev.jailbroken) {
+    v.classList.add('breach');
+    $('verdict-icon').textContent = '\u{1f6a8}';
+    $('verdict-title').textContent = 'JAILBREAK SUCCEEDED';
+    $('verdict-title').classList.add('breach');
+    $('alice-card').classList.remove('active');
+    $('alice-card').classList.add('compromised');
+    $('alice-status').textContent = 'Compromised';
+    $('bob-card').classList.remove('active');
+    $('bob-card').classList.add('hit');
+    $('bob-status').textContent = 'Received malicious messages';
+    $('arrow2').classList.add('active');
+    addEvent('\u{1f6a8}', 'BREACH \u2014 ' + ev.detail, '');
+  } else {
+    v.classList.add('resisted');
+    $('verdict-icon').textContent = '\u{1f6e1}';
+    $('verdict-title').textContent = 'JAILBREAK FAILED';
+    $('verdict-title').classList.add('resisted');
+    $('alice-status').textContent = 'Resisted injection';
+    $('bob-status').textContent = 'No malicious messages';
+    addEvent('\u{1f6e1}', ev.detail, '');
+  }
+  $('verdict-detail').textContent = ev.detail;
+  v.classList.add('visible');
+}
+
+$('run-btn').addEventListener('click', run);
+</script>
+</body>
+</html>

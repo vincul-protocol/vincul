@@ -489,6 +489,7 @@ def activation_receipt(
     )
 
 
+
 def dissolution_receipt(
     *,
     initiated_by: str,

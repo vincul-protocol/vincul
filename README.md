@@ -145,6 +145,22 @@ pip install -e .
 
 This installs the `vincul` package with its only dependency (`cryptography`).
 
+### With samples
+
+Install the core library plus sample agents and tools:
+
+```bash
+git clone https://github.com/vincul-protocol/vincul.git && cd vincul
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[samples]"
+```
+
+Run the cross-vendor tool marketplace demo:
+
+```bash
+python -m samples.cross_vendor_tool_marketplace.demo
+```
+
 ### With demo server
 
 To run the interactive demo, install with the `server` extra and build the frontend:
@@ -163,6 +179,7 @@ cd apps/web && npm install && npm run build && cd ../..
 ```bash
 pip install -e ".[server,dev]"
 ```
+
 
 ### Verify installation
 

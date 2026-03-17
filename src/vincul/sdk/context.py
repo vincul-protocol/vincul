@@ -325,7 +325,7 @@ class VinculContext:
     # ── Budget queries ─────────────────────────────────────────
 
     def get_budget_balance(self, scope_id: str, dimension: str) -> Decimal | None:
-        """Remaining budget (ceiling − consumed) for a scope+dimension.
+        """Remaining budget (ceiling - consumed) for a scope+dimension.
 
         Returns None if no ceiling is registered for this pair.
         """
